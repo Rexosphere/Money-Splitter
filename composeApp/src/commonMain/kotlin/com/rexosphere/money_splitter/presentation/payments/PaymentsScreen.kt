@@ -22,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentsScreen(
     modifier: Modifier = Modifier,
@@ -31,11 +30,6 @@ fun PaymentsScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Payments") }
-            )
-        },
         modifier = modifier
     ) { paddingValues ->
         LazyColumn(
