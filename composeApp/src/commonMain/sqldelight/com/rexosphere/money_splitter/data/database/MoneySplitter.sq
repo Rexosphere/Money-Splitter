@@ -1,7 +1,11 @@
 -- Users table
 CREATE TABLE users (
     id TEXT NOT NULL PRIMARY KEY,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    is_app_user INTEGER NOT NULL DEFAULT 0,
+    phone_number TEXT,
+    email TEXT,
+    added_by TEXT
 );
 
 -- Expenses table
@@ -61,7 +65,8 @@ CREATE TABLE friends (
 -- ============= USER QUERIES =============
 
 insertUser:
-INSERT OR REPLACE INTO users(id, name) VALUES (?, ?);
+INSERT OR REPLACE INTO users(id, name, is_app_user, phone_number, email, added_by)
+VALUES (?, ?, ?, ?, ?, ?);
 
 selectAllUsers:
 SELECT * FROM users;

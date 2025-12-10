@@ -13,31 +13,59 @@ class DatabaseHelper(driverFactory: DatabaseDriverFactory) {
     // ============= USER OPERATIONS =============
     
     fun insertUser(user: User) {
-        queries.insertUser(user.id, user.name)
+        queries.insertUser(
+            id = user.id,
+            name = user.name,
+            is_app_user = if (user.isAppUser) 1L else 0L,
+            phone_number = user.phoneNumber,
+            email = user.email,
+            added_by = user.addedBy
+        )
     }
 
     fun getAllUsers(): List<User> {
         return queries.selectAllUsers().executeAsList().map { row ->
-            User(id = row.id, name = row.name)
+            User(
+                id = row.id,
+                name = row.name,
+                isAppUser = row.is_app_user == 1L,
+                phoneNumber = row.phone_number,
+                email = row.email,
+                addedBy = row.added_by
+            )
         }
     }
 
     fun getUserById(id: String): User? {
         return queries.selectUserById(id).executeAsOneOrNull()?.let { row ->
-            User(id = row.id, name = row.name)
+            User(
+                id = row.id,
+                name = row.name,
+                isAppUser = row.is_app_user == 1L,
+                phoneNumber = row.phone_number,
+                email = row.email,
+                addedBy = row.added_by
+            )
         }
     }
 
     // ============= FRIEND OPERATIONS =============
 
     fun addFriend(user: User) {
-        queries.insertUser(user.id, user.name)
+        insertUser(user)  // Use the full insertUser method
         queries.insertFriend(user.id)
     }
 
     fun getAllFriends(): List<User> {
         return queries.selectAllFriends().executeAsList().map { row ->
-            User(id = row.id, name = row.name)
+            User(
+                id = row.id,
+                name = row.name,
+                isAppUser = row.is_app_user == 1L,
+                phoneNumber = row.phone_number,
+                email = row.email,
+                addedBy = row.added_by
+            )
         }
     }
 

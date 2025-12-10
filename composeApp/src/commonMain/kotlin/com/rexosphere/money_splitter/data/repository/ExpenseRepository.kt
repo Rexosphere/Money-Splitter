@@ -29,7 +29,11 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
     val friends: Flow<List<User>> = _friends.asStateFlow()
 
     // Current user (hardcoded for now)
-    val currentUser = User(id = "current_user", name = "Me")
+    val currentUser = User(
+        id = "current_user",
+        name = "Me",
+        isAppUser = true  // Current user is always an app user
+    )
 
     // Flag to track if we're using database
     private val useDatabase: Boolean = databaseHelper != null
@@ -62,9 +66,9 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
 
     @OptIn(ExperimentalUuidApi::class)
     private fun addDummyData() {
-        val alice = User(id = "alice", name = "Alice")
-        val bob = User(id = "bob", name = "Bob")
-        val charlie = User(id = "charlie", name = "Charlie")
+        val alice = User(id = "alice", name = "Alice", isAppUser = false)
+        val bob = User(id = "bob", name = "Bob", isAppUser = false)
+        val charlie = User(id = "charlie", name = "Charlie", isAppUser = false)
 
         _friends.value = listOf(alice, bob, charlie)
 
@@ -128,13 +132,53 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
     }
 
     @OptIn(ExperimentalUuidApi::class)
-    fun addFriend(name: String) {
-        val newFriend = User(id = Uuid.random().toString(), name = name)
+    fun addFriend(
+        name: String,
+        phoneNumber: String? = null,
+        email: String? = null,
+        isAppUser: Boolean = false
+    ) {
+        val newFriend = User(
+            id = Uuid.random().toString(),
+            name = name,
+            isAppUser = isAppUser,
+            phoneNumber = phoneNumber,
+            email = email,
+            addedBy = currentUser.id
+        )
         if (useDatabase) {
             databaseHelper?.addFriend(newFriend)
             refreshFromDatabase()
         } else {
             _friends.value = _friends.value + newFriend
+        }
+    }
+    
+    // Mark an existing contact as app user
+    fun markAsAppUser(userId: String, phoneNumber: String? = null, email: String? = null) {
+        if (useDatabase) {
+            val user = databaseHelper?.getUserById(userId)
+            if (user != null) {
+                val updatedUser = user.copy(
+                    isAppUser = true,
+                    phoneNumber = phoneNumber ?: user.phoneNumber,
+                    email = email ?: user.email
+                )
+                databaseHelper?.insertUser(updatedUser)
+                refreshFromDatabase()
+            }
+        } else {
+            _friends.value = _friends.value.map { friend ->
+                if (friend.id == userId) {
+                    friend.copy(
+                        isAppUser = true,
+                        phoneNumber = phoneNumber ?: friend.phoneNumber,
+                        email = email ?: friend.email
+                    )
+                } else {
+                    friend
+                }
+            }
         }
     }
 

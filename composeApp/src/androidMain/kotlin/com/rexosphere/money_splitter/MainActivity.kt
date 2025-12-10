@@ -18,7 +18,9 @@ class MainActivity : ComponentActivity() {
         DatabaseProvider.initialize(DatabaseDriverFactory(applicationContext))
 
         setContent {
-            MoneySplitterApp()
+            com.rexosphere.money_splitter.ui.theme.MoneySplitterTheme {
+                MoneySplitterApp()
+            }
         }
     }
 }

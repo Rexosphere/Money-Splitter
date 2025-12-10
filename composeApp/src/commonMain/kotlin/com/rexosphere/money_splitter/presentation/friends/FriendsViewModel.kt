@@ -12,7 +12,10 @@ import kotlinx.coroutines.launch
 data class FriendsUiState(
     val friends: List<User> = emptyList(),
     val showAddDialog: Boolean = false,
-    val newFriendName: String = ""
+    val newFriendName: String = "",
+    val newFriendPhone: String = "",
+    val newFriendEmail: String = "",
+    val newFriendIsAppUser: Boolean = false
 )
 
 class FriendsViewModel(private val repository: ExpenseRepository = ExpenseRepository()) : ViewModel() {
@@ -38,12 +41,27 @@ class FriendsViewModel(private val repository: ExpenseRepository = ExpenseReposi
     fun hideAddDialog() {
         _uiState.value = _uiState.value.copy(
             showAddDialog = false,
-            newFriendName = ""
+            newFriendName = "",
+            newFriendPhone = "",
+            newFriendEmail = "",
+            newFriendIsAppUser = false
         )
     }
 
     fun updateFriendName(name: String) {
         _uiState.value = _uiState.value.copy(newFriendName = name)
+    }
+    
+    fun updateFriendPhone(phone: String) {
+        _uiState.value = _uiState.value.copy(newFriendPhone = phone)
+    }
+    
+    fun updateFriendEmail(email: String) {
+        _uiState.value = _uiState.value.copy(newFriendEmail = email)
+    }
+    
+    fun toggleIsAppUser(isAppUser: Boolean) {
+        _uiState.value = _uiState.value.copy(newFriendIsAppUser = isAppUser)
     }
 
     fun addFriend() {
@@ -51,7 +69,12 @@ class FriendsViewModel(private val repository: ExpenseRepository = ExpenseReposi
         if (name.isBlank()) return
 
         viewModelScope.launch {
-            repository.addFriend(name)
+            repository.addFriend(
+                name = name,
+                phoneNumber = _uiState.value.newFriendPhone.takeIf { it.isNotBlank() },
+                email = _uiState.value.newFriendEmail.takeIf { it.isNotBlank() },
+                isAppUser = _uiState.value.newFriendIsAppUser
+            )
             hideAddDialog()
         }
     }

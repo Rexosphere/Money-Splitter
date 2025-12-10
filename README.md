@@ -1,6 +1,6 @@
 # 💰 Money-Splitter
 
-A **Kotlin Multiplatform** expense splitting application for Android and iOS, built with Jetpack Compose. Track shared expenses, calculate balances, and settle debts with friends — all with persistent SQLite storage.
+A **Kotlin Multiplatform** expense splitting application for Android and iOS, built with Jetpack Compose and a **premium modern UI**. Track shared expenses, calculate balances, and settle debts with friends — all with persistent SQLite storage.
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.2.21-blue.svg)](https://kotlinlang.org)
 [![Compose Multiplatform](https://img.shields.io/badge/Compose-1.9.3-green.svg)](https://www.jetbrains.com/lp/compose-multiplatform/)
@@ -9,23 +9,33 @@ A **Kotlin Multiplatform** expense splitting application for Android and iOS, bu
 
 ---
 
-## 📱 Features
+## ✨ Premium Features
 
-### Core Functionality
+### 🎨 Modern UI Design
+- **Material 3 Design System** with custom money-themed color palette
+- **Dark & Light Mode** support with beautiful color schemes
+- **Gradient Cards** for balance displays
+- **Circular Avatars** with auto-generated initials
+- **Color-Coded Amounts** (Green for positive, Red for negative)
+- **Premium Components** - Elevated cards, smooth animations
+
+### 💼 Core Functionality
 - ✅ **Track Shared Expenses** - Record who paid for what and who participated
 - ✅ **Automatic Balance Calculation** - Smart algorithm calculates who owes whom
 - ✅ **Debt Simplification** - Minimizes transactions needed to settle all debts
 - ✅ **Custom Shares** - Split equally or assign custom amounts per person
-- ✅ **Group Management** - Organize friends into groups (e.g., "Roommates", "Trip Team")
-- ✅ **Payment Tracking** - Mark payments as settled when friends pay back
+- ✅ **Contact Management** - Distinguish between app users (👤) and contacts (📝)
+- ✅ **Group Management** - Organize friends into groups with overlapping avatars
+- ✅ **Payment Tracking** - Mark payments as settled with one tap
 - ✅ **SQLite Persistence** - All data saved locally with SQLDelight
 
-### User Interface
-- 🏠 **Home Dashboard** - View net balances and friend debts at a glance
-- ➕ **Add Expense** - Quick expense entry with flexible splitting options
-- 👥 **Groups** - Create and manage friend groups
-- 💳 **Payments** - View pending and settled payments
-- 👤 **Profile** - User statistics and information
+### 📱 User Interface
+- 🏠 **Home Dashboard** - Split balance cards showing what you're owed vs what you owe
+- ➕ **Add Expense** - Large amount input with modern friend selection
+- 👥 **Friends** - Grid layout with avatars and app user badges
+- 👨‍👩‍👧‍👦 **Groups** - Card-based display with member avatars
+- 💳 **Payments** - Pending and settled sections with settle buttons
+- 👤 **Profile** - Gradient header with statistics cards
 
 ---
 
@@ -41,7 +51,42 @@ A **Kotlin Multiplatform** expense splitting application for Android and iOS, bu
 
 ---
 
-## 🏗 Architecture
+## � UI Design
+
+### Color Palette
+
+#### Light Mode
+- **Primary:** Vibrant Green (#00C853) - Money & Growth
+- **Secondary:** Warm Orange (#FF6F00) - Energy
+- **Background:** Soft White (#F8F9FA)
+- **Surface:** Pure White (#FFFFFF)
+
+#### Dark Mode
+- **Primary:** Light Green (#69F0AE)
+- **Secondary:** Soft Orange (#FFB74D)
+- **Background:** True Black (#121212)
+- **Surface:** Dark Gray (#1E1E1E)
+
+### Premium Components
+
+| Component | Description |
+|-----------|-------------|
+| **PremiumCard** | Elevated cards with 16dp rounded corners |
+| **BalanceCard** | Gradient background for balance displays |
+| **UserAvatar** | Circular avatars with auto-generated initials |
+| **AnimatedBadge** | 👤 App User / 📝 Contact badges |
+| **AmountText** | Auto-colored based on positive/negative |
+| **PrimaryGradientButton** | Modern buttons with elevation |
+
+### Design Principles
+- **Visual Hierarchy:** Important info is larger and more prominent
+- **Color Coding:** Green (positive), Red (negative), Gray (neutral)
+- **Consistency:** Reusable components ensure uniform look
+- **Modern Aesthetics:** Rounded corners, subtle shadows, clean spacing
+
+---
+
+## �🏗 Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -184,6 +229,7 @@ Result:
 |-----------|------------|
 | **Language** | Kotlin 2.2.21 |
 | **UI Framework** | Jetpack Compose Multiplatform 1.9.3 |
+| **UI Design** | Material 3 with custom theme |
 | **Database** | SQLDelight 2.0.2 (SQLite) |
 | **State Management** | Kotlin StateFlow + ViewModel |
 | **Date/Time** | kotlinx-datetime 0.6.0 |
@@ -200,6 +246,13 @@ Money-Splitter/
 │   ├── src/
 │   │   ├── commonMain/kotlin/com/rexosphere/money_splitter/
 │   │   │   ├── App.kt                    # Main app navigation
+│   │   │   ├── ui/
+│   │   │   │   ├── theme/                # Premium UI theme
+│   │   │   │   │   ├── Color.kt          # Light/Dark color palettes
+│   │   │   │   │   ├── Typography.kt     # Font styles
+│   │   │   │   │   └── Theme.kt          # Material 3 theme
+│   │   │   │   └── components/           # Reusable UI components
+│   │   │   │       └── Components.kt     # Premium cards, avatars, etc.
 │   │   │   ├── data/
 │   │   │   │   ├── database/             # SQLite (SQLDelight)
 │   │   │   │   │   ├── DatabaseDriverFactory.kt
@@ -217,6 +270,7 @@ Money-Splitter/
 │   │   │       ├── add_expense/
 │   │   │       ├── groups/
 │   │   │       ├── payments/
+│   │   │       ├── friends/
 │   │   │       └── profile/
 │   │   ├── androidMain/                  # Android-specific
 │   │   ├── iosMain/                      # iOS-specific
@@ -330,14 +384,23 @@ Project Link: [https://github.com/yourusername/Money-Splitter](https://github.co
 
 ## 🗺 Roadmap
 
+### Completed ✅
+- [x] Premium UI redesign with Material 3
+- [x] Dark/Light mode support
+- [x] Contact type distinction (App User vs Contact)
+- [x] SQLite database integration
+- [x] Expense splitting calculator
+
+### Planned
+- [ ] Backend sync for multi-user support
+- [ ] Contact-to-user linking
 - [ ] Multi-currency support
 - [ ] Export to CSV/PDF
-- [ ] Cloud sync
 - [ ] Receipt photo upload
 - [ ] Recurring expenses
 - [ ] Email notifications
-- [ ] Dark mode
 - [ ] Expense categories
+- [ ] Charts and analytics
 
 ---
 

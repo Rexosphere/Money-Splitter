@@ -2,7 +2,14 @@ package com.rexosphere.money_splitter.domain.model
 
 import kotlinx.datetime.LocalDate
 
-data class User(val id: String, val name: String)
+data class User(
+    val id: String,
+    val name: String,
+    val isAppUser: Boolean = false,        // Is this person using the app?
+    val phoneNumber: String? = null,       // For future linking
+    val email: String? = null,             // For future linking
+    val addedBy: String? = null            // Who added this contact
+)
 
 data class Expense(
     val id: String,

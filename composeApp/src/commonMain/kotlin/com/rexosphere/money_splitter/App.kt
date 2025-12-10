@@ -88,7 +88,7 @@ fun MoneySplitterApp() {
 @Preview(showBackground = true)
 @Composable
 fun AppPreview() {
-    MaterialTheme {
+    com.rexosphere.money_splitter.ui.theme.MoneySplitterTheme {
         MoneySplitterApp()
     }
 }
