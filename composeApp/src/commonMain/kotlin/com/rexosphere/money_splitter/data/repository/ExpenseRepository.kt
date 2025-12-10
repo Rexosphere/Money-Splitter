@@ -1,5 +1,7 @@
 package com.rexosphere.money_splitter.data.repository
 
+import com.rexosphere.money_splitter.data.database.DatabaseHelper
+import com.rexosphere.money_splitter.data.database.DatabaseProvider
 import com.rexosphere.money_splitter.domain.model.Expense
 import com.rexosphere.money_splitter.domain.model.Group
 import com.rexosphere.money_splitter.domain.model.Payment
@@ -7,14 +9,13 @@ import com.rexosphere.money_splitter.domain.model.User
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-class ExpenseRepository {
+class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabaseProvider.databaseHelper) {
     private val _expenses = MutableStateFlow<List<Expense>>(emptyList())
     val expenses: Flow<List<Expense>> = _expenses.asStateFlow()
 
@@ -30,9 +31,33 @@ class ExpenseRepository {
     // Current user (hardcoded for now)
     val currentUser = User(id = "current_user", name = "Me")
 
+    // Flag to track if we're using database
+    private val useDatabase: Boolean = databaseHelper != null
+
     init {
-        // Add some dummy data for testing
-        addDummyData()
+        if (useDatabase) {
+            // Initialize with database data
+            databaseHelper?.initializeWithDummyData(currentUser)
+            loadFromDatabase()
+        } else {
+            // Fallback to in-memory dummy data
+            addDummyData()
+        }
+    }
+
+    private fun loadFromDatabase() {
+        databaseHelper?.let { db ->
+            _friends.value = db.getAllFriends()
+            _expenses.value = db.getAllExpenses()
+            _payments.value = db.getAllPayments()
+            _groups.value = db.getAllGroups()
+        }
+    }
+
+    private fun refreshFromDatabase() {
+        if (useDatabase) {
+            loadFromDatabase()
+        }
     }
 
     @OptIn(ExperimentalUuidApi::class)
@@ -78,16 +103,26 @@ class ExpenseRepository {
 
     @OptIn(ExperimentalUuidApi::class)
     fun addExpense(expense: Expense) {
-        _expenses.value = _expenses.value + expense
+        if (useDatabase) {
+            databaseHelper?.insertExpense(expense)
+            refreshFromDatabase()
+        } else {
+            _expenses.value = _expenses.value + expense
+        }
         updatePaymentsFromExpenses()
     }
 
     fun settlePayment(paymentId: String) {
-        _payments.value = _payments.value.map { payment ->
-            if (payment.id == paymentId) {
-                payment.copy(isSettled = true)
-            } else {
-                payment
+        if (useDatabase) {
+            databaseHelper?.settlePayment(paymentId)
+            refreshFromDatabase()
+        } else {
+            _payments.value = _payments.value.map { payment ->
+                if (payment.id == paymentId) {
+                    payment.copy(isSettled = true)
+                } else {
+                    payment
+                }
             }
         }
     }
@@ -95,7 +130,12 @@ class ExpenseRepository {
     @OptIn(ExperimentalUuidApi::class)
     fun addFriend(name: String) {
         val newFriend = User(id = Uuid.random().toString(), name = name)
-        _friends.value = _friends.value + newFriend
+        if (useDatabase) {
+            databaseHelper?.addFriend(newFriend)
+            refreshFromDatabase()
+        } else {
+            _friends.value = _friends.value + newFriend
+        }
     }
 
     @OptIn(ExperimentalUuidApi::class)
@@ -105,7 +145,12 @@ class ExpenseRepository {
             name = name,
             members = members
         )
-        _groups.value = _groups.value + newGroup
+        if (useDatabase) {
+            databaseHelper?.insertGroup(newGroup)
+            refreshFromDatabase()
+        } else {
+            _groups.value = _groups.value + newGroup
+        }
     }
 
     @OptIn(ExperimentalUuidApi::class)
@@ -134,6 +179,14 @@ class ExpenseRepository {
         // Preserve settled payments
         val settledPayments = _payments.value.filter { it.isSettled }
         _payments.value = newPayments + settledPayments
+
+        // If using database, persist the new payments
+        if (useDatabase) {
+            databaseHelper?.deleteAllPayments()
+            _payments.value.forEach { payment ->
+                databaseHelper?.insertPayment(payment)
+            }
+        }
     }
 
     // Calculate net balances between users
