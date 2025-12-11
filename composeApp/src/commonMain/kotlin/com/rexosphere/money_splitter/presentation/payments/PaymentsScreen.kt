@@ -152,7 +152,7 @@ fun PaymentsScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
-                                        text = "Rs.${String.format("%.2f", payment.amount)}",
+                                        text = "Rs.${com.rexosphere.money_splitter.ui.components.formatAmount(payment.amount)}",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                                     )

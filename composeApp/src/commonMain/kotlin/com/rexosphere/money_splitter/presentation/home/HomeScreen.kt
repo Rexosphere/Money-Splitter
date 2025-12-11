@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rexosphere.money_splitter.ui.components.*
+import com.rexosphere.money_splitter.ui.components.formatAmount
 import com.rexosphere.money_splitter.ui.theme.customColors
 
 @Composable
@@ -70,7 +71,7 @@ fun HomeScreen(
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Rs.${String.format("%.2f", uiState.netBalanceOwed)}",
+                            text = "Rs.${formatAmount(uiState.netBalanceOwed)}",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.customColors.positiveAmount
@@ -108,7 +109,7 @@ fun HomeScreen(
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Rs.${String.format("%.2f", uiState.netBalanceOwe)}",
+                            text = "Rs.${formatAmount(uiState.netBalanceOwe)}",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.customColors.negativeAmount

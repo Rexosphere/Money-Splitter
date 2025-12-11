@@ -15,6 +15,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rexosphere.money_splitter.ui.theme.customColors
+import kotlin.math.roundToInt
+
+// KMP-compatible number formatting
+fun formatAmount(amount: Double): String {
+    val rounded = (amount * 100).roundToInt() / 100.0
+    val intPart = rounded.toLong()
+    val decPart = ((rounded - intPart) * 100).roundToInt()
+    return "$intPart.${decPart.toString().padStart(2, '0')}"
+}
 
 /**
  * Premium card with elevation and rounded corners
@@ -90,7 +99,7 @@ fun BalanceCard(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Rs.${String.format("%.2f", amount)}",
+                    text = "Rs.${formatAmount(amount)}",
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -194,7 +203,7 @@ fun AmountText(
     }
     
     Text(
-        text = "${prefix}Rs.${String.format("%.2f", kotlin.math.abs(amount))}",
+        text = "${prefix}Rs.${formatAmount(kotlin.math.abs(amount))}",
         style = style,
         color = color,
         fontWeight = FontWeight.SemiBold,

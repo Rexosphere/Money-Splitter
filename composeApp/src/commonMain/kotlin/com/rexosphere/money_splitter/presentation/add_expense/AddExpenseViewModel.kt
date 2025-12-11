@@ -14,6 +14,15 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+import kotlin.math.roundToInt
+
+// KMP-compatible number formatting
+private fun formatAmount(amount: Double): String {
+    val rounded = (amount * 100).roundToInt() / 100.0
+    val intPart = rounded.toLong()
+    val decPart = ((rounded - intPart) * 100).roundToInt()
+    return "$intPart.${decPart.toString().padStart(2, '0')}"
+}
 
 data class AddExpenseUiState(
     val amount: String = "",
@@ -76,9 +85,9 @@ class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRep
         val shares = mutableMapOf<String, String>()
 
         _uiState.value.selectedFriends.forEach { friendId ->
-            shares[friendId] = String.format("%.2f", equalShare)
+            shares[friendId] = formatAmount(equalShare)
         }
-        shares[repository.currentUser.id] = String.format("%.2f", equalShare)
+        shares[repository.currentUser.id] = formatAmount(equalShare)
 
         _uiState.value = _uiState.value.copy(friendShares = shares)
     }
