@@ -12,6 +12,8 @@ import kotlinx.coroutines.launch
 data class FriendsUiState(
     val friends: List<User> = emptyList(),
     val showAddDialog: Boolean = false,
+    val showDeleteDialog: Boolean = false,
+    val friendToDelete: User? = null,
     val newFriendName: String = "",
     val newFriendPhone: String = "",
     val newFriendEmail: String = "",
@@ -76,6 +78,29 @@ class FriendsViewModel(private val repository: ExpenseRepository = ExpenseReposi
                 isAppUser = _uiState.value.newFriendIsAppUser
             )
             hideAddDialog()
+        }
+    }
+    
+    // Delete functionality
+    fun showDeleteDialog(friend: User) {
+        _uiState.value = _uiState.value.copy(
+            showDeleteDialog = true,
+            friendToDelete = friend
+        )
+    }
+    
+    fun hideDeleteDialog() {
+        _uiState.value = _uiState.value.copy(
+            showDeleteDialog = false,
+            friendToDelete = null
+        )
+    }
+    
+    fun confirmDeleteFriend() {
+        val friend = _uiState.value.friendToDelete ?: return
+        viewModelScope.launch {
+            repository.deleteFriend(friend.id)
+            hideDeleteDialog()
         }
     }
 }

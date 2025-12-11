@@ -196,6 +196,26 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
             _groups.value = _groups.value + newGroup
         }
     }
+    
+    // Delete a friend
+    fun deleteFriend(friendId: String) {
+        if (useDatabase) {
+            databaseHelper?.deleteFriend(friendId)
+            refreshFromDatabase()
+        } else {
+            _friends.value = _friends.value.filter { it.id != friendId }
+        }
+    }
+    
+    // Delete a group
+    fun deleteGroup(groupId: String) {
+        if (useDatabase) {
+            databaseHelper?.deleteGroup(groupId)
+            refreshFromDatabase()
+        } else {
+            _groups.value = _groups.value.filter { it.id != groupId }
+        }
+    }
 
     @OptIn(ExperimentalUuidApi::class)
     private fun updatePaymentsFromExpenses() {

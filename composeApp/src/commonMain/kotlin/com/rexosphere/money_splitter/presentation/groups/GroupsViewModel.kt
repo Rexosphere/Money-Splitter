@@ -14,6 +14,8 @@ data class GroupsUiState(
     val groups: List<Group> = emptyList(),
     val friends: List<User> = emptyList(),
     val showCreateDialog: Boolean = false,
+    val showDeleteDialog: Boolean = false,
+    val groupToDelete: Group? = null,
     val newGroupName: String = "",
     val selectedMembers: Set<String> = emptySet()
 )
@@ -75,6 +77,29 @@ class GroupsViewModel(private val repository: ExpenseRepository = ExpenseReposit
             val members = state.friends.filter { state.selectedMembers.contains(it.id) }
             repository.addGroup(state.newGroupName, members + repository.currentUser)
             hideCreateDialog()
+        }
+    }
+    
+    // Delete functionality
+    fun showDeleteDialog(group: Group) {
+        _uiState.value = _uiState.value.copy(
+            showDeleteDialog = true,
+            groupToDelete = group
+        )
+    }
+    
+    fun hideDeleteDialog() {
+        _uiState.value = _uiState.value.copy(
+            showDeleteDialog = false,
+            groupToDelete = null
+        )
+    }
+    
+    fun confirmDeleteGroup() {
+        val group = _uiState.value.groupToDelete ?: return
+        viewModelScope.launch {
+            repository.deleteGroup(group.id)
+            hideDeleteDialog()
         }
     }
 }
