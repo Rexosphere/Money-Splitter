@@ -3,6 +3,7 @@ package com.rexosphere.money_splitter.data.repository
 import com.rexosphere.money_splitter.data.database.DatabaseHelper
 import com.rexosphere.money_splitter.data.database.DatabaseProvider
 import com.rexosphere.money_splitter.domain.model.Expense
+import com.rexosphere.money_splitter.domain.model.ExpenseCategory
 import com.rexosphere.money_splitter.domain.model.Group
 import com.rexosphere.money_splitter.domain.model.Payment
 import com.rexosphere.money_splitter.domain.model.User
@@ -15,7 +16,9 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabaseProvider.databaseHelper) {
+object ExpenseRepository {
+    private val databaseHelper: DatabaseHelper? get() = DatabaseProvider.databaseHelper
+    
     private val _expenses = MutableStateFlow<List<Expense>>(emptyList())
     val expenses: Flow<List<Expense>> = _expenses.asStateFlow()
 
@@ -36,12 +39,12 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
     )
 
     // Flag to track if we're using database
-    private val useDatabase: Boolean = databaseHelper != null
+    private val useDatabase: Boolean get() = databaseHelper != null
 
     init {
         if (useDatabase) {
             // Initialize with database data
-            databaseHelper?.initializeWithDummyData(currentUser)
+            databaseHelper?.initialize(currentUser)
             loadFromDatabase()
         } else {
             // Fallback to in-memory dummy data
@@ -66,43 +69,11 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
 
     @OptIn(ExperimentalUuidApi::class)
     private fun addDummyData() {
-        val alice = User(id = "alice", name = "Alice", isAppUser = false)
-        val bob = User(id = "bob", name = "Bob", isAppUser = false)
-        val charlie = User(id = "charlie", name = "Charlie", isAppUser = false)
-
-        _friends.value = listOf(alice, bob, charlie)
-
-        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-
-        _expenses.value = listOf(
-            Expense(
-                id = Uuid.random().toString(),
-                description = "Dinner",
-                amount = 150.0,
-                date = now,
-                paidBy = currentUser,
-                participants = mapOf(
-                    currentUser to 50.0,
-                    alice to 50.0,
-                    bob to 50.0
-                )
-            ),
-            Expense(
-                id = Uuid.random().toString(),
-                description = "Movie tickets",
-                amount = 60.0,
-                date = now,
-                paidBy = alice,
-                participants = mapOf(
-                    currentUser to 20.0,
-                    alice to 20.0,
-                    charlie to 20.0
-                )
-            )
-        )
-
-        // Convert expenses to payments
-        updatePaymentsFromExpenses()
+        // Start with empty data - users can add their own friends and expenses
+        _friends.value = emptyList()
+        _expenses.value = emptyList()
+        _payments.value = emptyList()
+        _groups.value = emptyList()
     }
 
     @OptIn(ExperimentalUuidApi::class)
@@ -112,6 +83,16 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
             refreshFromDatabase()
         } else {
             _expenses.value = _expenses.value + expense
+        }
+        updatePaymentsFromExpenses()
+    }
+
+    fun deleteExpense(expenseId: String) {
+        if (useDatabase) {
+            databaseHelper?.deleteExpense(expenseId)
+            refreshFromDatabase()
+        } else {
+            _expenses.value = _expenses.value.filter { it.id != expenseId }
         }
         updatePaymentsFromExpenses()
     }
@@ -130,6 +111,34 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
             }
         }
     }
+
+    // Settle all payments between two specific users
+    fun settlePaymentsByUserPair(debtorId: String, creditorId: String) {
+        if (useDatabase) {
+            // Find all pending payments from debtor to creditor
+            val paymentsToSettle = databaseHelper?.getAllPayments()?.filter { payment ->
+                !payment.isSettled &&
+                payment.from.id == debtorId &&
+                payment.to.id == creditorId
+            } ?: emptyList()
+            
+            paymentsToSettle.forEach { payment ->
+                databaseHelper?.settlePayment(payment.id)
+            }
+            refreshFromDatabase()
+        } else {
+            _payments.value = _payments.value.map { payment ->
+                if (!payment.isSettled && 
+                    payment.from.id == debtorId && 
+                    payment.to.id == creditorId) {
+                    payment.copy(isSettled = true)
+                } else {
+                    payment
+                }
+            }
+        }
+    }
+
 
     @OptIn(ExperimentalUuidApi::class)
     fun addFriend(
@@ -216,6 +225,59 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
             _groups.value = _groups.value.filter { it.id != groupId }
         }
     }
+    
+    // Update a friend
+    fun updateFriend(
+        friendId: String,
+        name: String,
+        phoneNumber: String? = null,
+        email: String? = null,
+        isAppUser: Boolean = false
+    ) {
+        if (useDatabase) {
+            val existingUser = databaseHelper?.getUserById(friendId)
+            if (existingUser != null) {
+                val updatedUser = existingUser.copy(
+                    name = name,
+                    phoneNumber = phoneNumber,
+                    email = email,
+                    isAppUser = isAppUser
+                )
+                databaseHelper?.insertUser(updatedUser)
+                refreshFromDatabase()
+            }
+        } else {
+            _friends.value = _friends.value.map { friend ->
+                if (friend.id == friendId) {
+                    friend.copy(
+                        name = name,
+                        phoneNumber = phoneNumber,
+                        email = email,
+                        isAppUser = isAppUser
+                    )
+                } else {
+                    friend
+                }
+            }
+        }
+    }
+    
+    // Update a group
+    fun updateGroup(groupId: String, name: String, members: List<User>) {
+        if (useDatabase) {
+            val updatedGroup = Group(id = groupId, name = name, members = members)
+            databaseHelper?.insertGroup(updatedGroup)
+            refreshFromDatabase()
+        } else {
+            _groups.value = _groups.value.map { group ->
+                if (group.id == groupId) {
+                    group.copy(name = name, members = members)
+                } else {
+                    group
+                }
+            }
+        }
+    }
 
     @OptIn(ExperimentalUuidApi::class)
     private fun updatePaymentsFromExpenses() {
@@ -224,18 +286,33 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
 
         // Convert each expense into individual payments
         _expenses.value.forEach { expense ->
+            // For each participant, calculate what they owe
             expense.participants.forEach { (participant, share) ->
-                if (participant.id != expense.paidBy.id && share > 0) {
-                    newPayments.add(
-                        Payment(
-                            id = Uuid.random().toString(),
-                            from = participant,
-                            to = expense.paidBy,
-                            amount = share,
-                            date = now,
-                            isSettled = false
-                        )
-                    )
+                // Calculate how much this participant paid
+                val participantPaid = expense.paidBy[participant] ?: 0.0
+                val participantOwes = share - participantPaid
+                
+                if (participantOwes > 0.01) { // They owe money
+                    // They need to pay each payer proportionally
+                    expense.paidBy.forEach { (payer, paidAmount) ->
+                        if (payer.id != participant.id) {
+                            val payerShare = paidAmount / expense.amount
+                            val amountToPay = participantOwes * payerShare
+                            
+                            if (amountToPay > 0.01) {
+                                newPayments.add(
+                                    Payment(
+                                        id = Uuid.random().toString(),
+                                        from = participant,
+                                        to = payer,
+                                        amount = amountToPay,
+                                        date = now,
+                                        isSettled = false
+                                    )
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -266,6 +343,41 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
 
         return balances
     }
+
+    // Get ALL debts between user pairs (not simplified)
+    // Returns: List of (debtor, creditor, amount)
+    fun getAllDebts(): List<Triple<User, User, Double>> {
+        val debtMap = mutableMapOf<Pair<String, String>, Triple<User, User, Double>>()
+
+        _payments.value.filter { !it.isSettled }.forEach { payment ->
+            val key = Pair(payment.from.id, payment.to.id)
+            val reverseKey = Pair(payment.to.id, payment.from.id)
+
+            // Check if there's already a debt in opposite direction
+            if (debtMap.containsKey(reverseKey)) {
+                val existing = debtMap[reverseKey]!!
+                val newAmount = existing.third - payment.amount
+                if (newAmount > 0.01) {
+                    debtMap[reverseKey] = Triple(existing.first, existing.second, newAmount)
+                } else if (newAmount < -0.01) {
+                    debtMap.remove(reverseKey)
+                    debtMap[key] = Triple(payment.from, payment.to, kotlin.math.abs(newAmount))
+                } else {
+                    debtMap.remove(reverseKey)
+                }
+            } else {
+                val existing = debtMap[key]
+                if (existing != null) {
+                    debtMap[key] = Triple(existing.first, existing.second, existing.third + payment.amount)
+                } else {
+                    debtMap[key] = Triple(payment.from, payment.to, payment.amount)
+                }
+            }
+        }
+
+        return debtMap.values.toList().sortedByDescending { it.third }
+    }
+
 
     // Get simplified debts (reduce transactions between users)
     fun getSimplifiedDebts(): List<Pair<User, Pair<User, Double>>> {

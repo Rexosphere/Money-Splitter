@@ -77,7 +77,9 @@ class DatabaseHelper(driverFactory: DatabaseDriverFactory) {
 
     fun insertExpense(expense: Expense) {
         // First ensure all users exist
-        insertUser(expense.paidBy)
+        expense.paidBy.keys.forEach { user ->
+            insertUser(user)
+        }
         expense.participants.keys.forEach { user ->
             insertUser(user)
         }
@@ -88,8 +90,14 @@ class DatabaseHelper(driverFactory: DatabaseDriverFactory) {
             description = expense.description,
             amount = expense.amount,
             date = expense.date.toString(),
-            paid_by_id = expense.paidBy.id
+            category = expense.category.name
         )
+
+        // Delete existing payers and re-add
+        queries.deletePayersByExpenseId(expense.id)
+        expense.paidBy.forEach { (user, paidAmount) ->
+            queries.insertExpensePayer(expense.id, user.id, paidAmount)
+        }
 
         // Delete existing participants and re-add
         queries.deleteParticipantsByExpenseId(expense.id)
@@ -101,18 +109,36 @@ class DatabaseHelper(driverFactory: DatabaseDriverFactory) {
     fun getAllExpenses(): List<Expense> {
         val expenseRows = queries.selectAllExpenses().executeAsList()
         return expenseRows.mapNotNull { row ->
-            val paidBy = getUserById(row.paid_by_id) ?: return@mapNotNull null
+            val paidBy = getExpensePayers(row.id)
             val participants = getExpenseParticipants(row.id)
             
+            if (paidBy.isEmpty()) return@mapNotNull null
+            
+            // Parse category, standardizing behavior
+            val category = try {
+                com.rexosphere.money_splitter.domain.model.ExpenseCategory.valueOf(row.category)
+            } catch (e: Exception) {
+                com.rexosphere.money_splitter.domain.model.ExpenseCategory.OTHER
+            }
+
             Expense(
                 id = row.id,
                 description = row.description,
                 amount = row.amount,
                 date = LocalDate.parse(row.date),
+                category = category,
                 paidBy = paidBy,
                 participants = participants
             )
         }
+    }
+
+    private fun getExpensePayers(expenseId: String): Map<User, Double> {
+        return queries.selectPayersByExpenseId(expenseId).executeAsList()
+            .mapNotNull { row ->
+                val user = getUserById(row.user_id) ?: return@mapNotNull null
+                user to row.paid_amount
+            }.toMap()
     }
 
     private fun getExpenseParticipants(expenseId: String): Map<User, Double> {
@@ -124,6 +150,7 @@ class DatabaseHelper(driverFactory: DatabaseDriverFactory) {
     }
 
     fun deleteExpense(expenseId: String) {
+        queries.deletePayersByExpenseId(expenseId)
         queries.deleteParticipantsByExpenseId(expenseId)
         queries.deleteExpense(expenseId)
     }
@@ -242,22 +269,8 @@ class DatabaseHelper(driverFactory: DatabaseDriverFactory) {
 
     // ============= INITIALIZATION =============
 
-    fun initializeWithDummyData(currentUser: User) {
-        // Insert current user
+    fun initialize(currentUser: User) {
+        // Insert current user only
         insertUser(currentUser)
-
-        // Check if we already have data
-        if (getAllFriends().isNotEmpty()) {
-            return // Already initialized
-        }
-
-        // Add dummy friends
-        val alice = User(id = "alice", name = "Alice")
-        val bob = User(id = "bob", name = "Bob")
-        val charlie = User(id = "charlie", name = "Charlie")
-
-        addFriend(alice)
-        addFriend(bob)
-        addFriend(charlie)
     }
 }

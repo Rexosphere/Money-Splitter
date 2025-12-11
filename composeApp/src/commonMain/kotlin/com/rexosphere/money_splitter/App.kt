@@ -11,7 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.rexosphere.money_splitter.presentation.add_expense.AddExpenseScreen
+import com.rexosphere.money_splitter.presentation.expenses.ExpensesScreen
 import com.rexosphere.money_splitter.presentation.friends.FriendsScreen
 import com.rexosphere.money_splitter.presentation.groups.GroupsScreen
 import com.rexosphere.money_splitter.presentation.home.HomeScreen
@@ -22,7 +22,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 // --- Screen Definitions ---
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
     object Home : Screen("home", "Home", Icons.Filled.Home)
-    object Add : Screen("add", "Add", Icons.Filled.Add)
+    object Expenses : Screen("expenses", "Expenses", Icons.Filled.Payment) // Or use a different icon like Receipt or List
     object Friends : Screen("friends", "Friends", Icons.Filled.Person)
     object Groups : Screen("groups", "Groups", Icons.Filled.Group)
     object Payments : Screen("payments", "Payments", Icons.Filled.Payment)
@@ -31,7 +31,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
 
 val bottomNavItems = listOf(
     Screen.Home,
-    Screen.Add,
+    Screen.Expenses,
     Screen.Friends,
     Screen.Groups,
     Screen.Payments
@@ -76,7 +76,7 @@ fun MoneySplitterApp() {
     ) { innerPadding ->
         when (currentScreen) {
             Screen.Home -> HomeScreen(modifier = Modifier.padding(innerPadding))
-            Screen.Add -> AddExpenseScreen(modifier = Modifier.padding(innerPadding))
+            Screen.Expenses -> ExpensesScreen(modifier = Modifier.padding(innerPadding))
             Screen.Friends -> FriendsScreen(modifier = Modifier.padding(innerPadding))
             Screen.Groups -> GroupsScreen(modifier = Modifier.padding(innerPadding))
             Screen.Payments -> PaymentsScreen(modifier = Modifier.padding(innerPadding))

@@ -14,13 +14,20 @@ data class GroupsUiState(
     val groups: List<Group> = emptyList(),
     val friends: List<User> = emptyList(),
     val showCreateDialog: Boolean = false,
+    val showEditDialog: Boolean = false,
     val showDeleteDialog: Boolean = false,
+    val groupToEdit: Group? = null,
     val groupToDelete: Group? = null,
     val newGroupName: String = "",
-    val selectedMembers: Set<String> = emptySet()
+    val selectedMembers: Set<String> = emptySet(),
+    val includeSelf: Boolean = true,
+    // Edit fields
+    val editGroupName: String = "",
+    val editSelectedMembers: Set<String> = emptySet(),
+    val editIncludeSelf: Boolean = true
 )
 
-class GroupsViewModel(private val repository: ExpenseRepository = ExpenseRepository()) : ViewModel() {
+class GroupsViewModel(private val repository: ExpenseRepository = ExpenseRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(GroupsUiState())
     val uiState: StateFlow<GroupsUiState> = _uiState.asStateFlow()
 
@@ -43,6 +50,7 @@ class GroupsViewModel(private val repository: ExpenseRepository = ExpenseReposit
         }
     }
 
+    // Create Dialog
     fun showCreateDialog() {
         _uiState.value = _uiState.value.copy(showCreateDialog = true)
     }
@@ -51,7 +59,8 @@ class GroupsViewModel(private val repository: ExpenseRepository = ExpenseReposit
         _uiState.value = _uiState.value.copy(
             showCreateDialog = false,
             newGroupName = "",
-            selectedMembers = emptySet()
+            selectedMembers = emptySet(),
+            includeSelf = true
         )
     }
 
@@ -69,18 +78,76 @@ class GroupsViewModel(private val repository: ExpenseRepository = ExpenseReposit
         _uiState.value = _uiState.value.copy(selectedMembers = newSelected)
     }
 
+    fun toggleIncludeSelf() {
+        _uiState.value = _uiState.value.copy(includeSelf = !_uiState.value.includeSelf)
+    }
+
     fun createGroup() {
         val state = _uiState.value
         if (state.newGroupName.isBlank() || state.selectedMembers.isEmpty()) return
 
         viewModelScope.launch {
             val members = state.friends.filter { state.selectedMembers.contains(it.id) }
-            repository.addGroup(state.newGroupName, members + repository.currentUser)
+            val finalMembers = if (state.includeSelf) members + repository.currentUser else members
+            repository.addGroup(state.newGroupName, finalMembers)
             hideCreateDialog()
         }
     }
     
-    // Delete functionality
+    // Edit Dialog
+    fun showEditDialog(group: Group) {
+        val isCurrentUserInGroup = group.members.any { it.id == repository.currentUser.id }
+        _uiState.value = _uiState.value.copy(
+            showEditDialog = true,
+            groupToEdit = group,
+            editGroupName = group.name,
+            editSelectedMembers = group.members.map { it.id }.toSet() - repository.currentUser.id,
+            editIncludeSelf = isCurrentUserInGroup
+        )
+    }
+    
+    fun hideEditDialog() {
+        _uiState.value = _uiState.value.copy(
+            showEditDialog = false,
+            groupToEdit = null,
+            editGroupName = "",
+            editSelectedMembers = emptySet(),
+            editIncludeSelf = true
+        )
+    }
+    
+    fun updateEditGroupName(name: String) {
+        _uiState.value = _uiState.value.copy(editGroupName = name)
+    }
+    
+    fun toggleEditMember(userId: String) {
+        val selected = _uiState.value.editSelectedMembers
+        val newSelected = if (selected.contains(userId)) {
+            selected - userId
+        } else {
+            selected + userId
+        }
+        _uiState.value = _uiState.value.copy(editSelectedMembers = newSelected)
+    }
+    
+    fun toggleEditIncludeSelf() {
+        _uiState.value = _uiState.value.copy(editIncludeSelf = !_uiState.value.editIncludeSelf)
+    }
+    
+    fun confirmEditGroup() {
+        val group = _uiState.value.groupToEdit ?: return
+        val state = _uiState.value
+        if (state.editGroupName.isBlank() || state.editSelectedMembers.isEmpty()) return
+        
+        viewModelScope.launch {
+            val members = state.friends.filter { state.editSelectedMembers.contains(it.id) }
+            val finalMembers = if (state.editIncludeSelf) members + repository.currentUser else members
+            repository.updateGroup(group.id, state.editGroupName, finalMembers)
+            hideEditDialog()
+        }
+    }
+    
+    // Delete Dialog
     fun showDeleteDialog(group: Group) {
         _uiState.value = _uiState.value.copy(
             showDeleteDialog = true,

@@ -17,49 +17,100 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rexosphere.money_splitter.ui.components.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 
 @Composable
-fun AddExpenseScreen(
-    modifier: Modifier = Modifier,
+fun AddExpenseDialog(
+    onDismissRequest: () -> Unit,
+    editingExpense: com.rexosphere.money_splitter.domain.model.Expense? = null,
     viewModel: AddExpenseViewModel = viewModel { AddExpenseViewModel() }
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val snackbarHostState = androidx.compose.material3.SnackbarHostState()
-
+    
+    // Pre-populate form when editing
+    LaunchedEffect(editingExpense) {
+        editingExpense?.let { expense ->
+            viewModel.loadExpenseForEditing(expense)
+        }
+    }
+    
+    // Auto-dismiss when saved successfully
     LaunchedEffect(uiState.savedSuccessfully) {
         if (uiState.savedSuccessfully) {
-            snackbarHostState.showSnackbar("Expense saved successfully! 🎉")
             viewModel.resetForm()
+            onDismissRequest()
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        modifier = modifier
-    ) { paddingValues ->
-        LazyColumn(
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false // Full width/height or custom
+        )
+    ) {
+        Surface(
             modifier = Modifier
-                .padding(paddingValues)
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
         ) {
-            item { Spacer(modifier = Modifier.height(8.dp)) }
-            
-            // Header
-            item {
-                Text(
-                    text = "Add Expense",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+            Column {
+                // Dialog Header with Close Button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Add Expense",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = onDismissRequest) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close"
+                        )
+                    }
+                }
+                
+                AddExpenseContent(
+                    viewModel = viewModel,
+                    modifier = Modifier.weight(1f)
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun AddExpenseContent(
+    modifier: Modifier = Modifier,
+    viewModel: AddExpenseViewModel
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item { Spacer(modifier = Modifier.height(0.dp)) }
+        
+        // Removed Header as it's now in the Dialog wrapper
+
 
             // Amount Input Card
             item {
                 PremiumCard {
                     Text(
-                        text = "Amount",
+                        text = "Total Amount",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -99,13 +150,125 @@ fun AddExpenseScreen(
                     )
                 }
             }
-
-            // Split With Section
+            
+            // Category Selection
             item {
-                SectionHeader(title = "Split With")
+                PremiumCard {
+                    CategorySelector(
+                        selectedCategory = uiState.category,
+                        onCategorySelected = { viewModel.setCategory(it) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
 
-            // Friend Selection
+            // Group Quick Select
+            if (uiState.groups.isNotEmpty()) {
+                item {
+                    PremiumCard {
+                        val selectedGroup = uiState.selectedGroup
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Quick Select Group",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                if (selectedGroup != null) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "${selectedGroup.members.size} members selected",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                            
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                uiState.groups.forEach { group ->
+                                    FilterChip(
+                                        selected = selectedGroup?.id == group.id,
+                                        onClick = { 
+                                            if (selectedGroup?.id == group.id) {
+                                                viewModel.selectGroup(null)
+                                            } else {
+                                                viewModel.selectGroup(group)
+                                            }
+                                        },
+                                        label = { Text(group.name) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Who Paid Section
+            item {
+                SectionHeader(title = "Who Paid?")
+            }
+
+            // Current User as Payer
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (uiState.selectedPayers.contains("current_user"))
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Checkbox(
+                                checked = uiState.selectedPayers.contains("current_user"),
+                                onCheckedChange = { viewModel.togglePayer("current_user") }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            UserAvatar(name = "Me", size = 40)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "You",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        if (uiState.selectedPayers.contains("current_user")) {
+                            OutlinedTextField(
+                                value = uiState.payerAmounts["current_user"] ?: "",
+                                onValueChange = { viewModel.updatePayerAmount("current_user", it) },
+                                placeholder = { Text("0.00") },
+                                prefix = { Text("Rs. ") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.width(120.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Friend Payers
             items(uiState.friends) { friend ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -124,8 +287,8 @@ fun AddExpenseScreen(
                             modifier = Modifier.weight(1f)
                         ) {
                             Checkbox(
-                                checked = uiState.selectedFriends.contains(friend.id),
-                                onCheckedChange = { viewModel.toggleFriend(friend.id) }
+                                checked = uiState.selectedPayers.contains(friend.id),
+                                onCheckedChange = { viewModel.togglePayer(friend.id) }
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             UserAvatar(name = friend.name, size = 40)
@@ -137,10 +300,10 @@ fun AddExpenseScreen(
                             )
                         }
 
-                        if (uiState.selectedFriends.contains(friend.id)) {
+                        if (uiState.selectedPayers.contains(friend.id)) {
                             OutlinedTextField(
-                                value = uiState.friendShares[friend.id] ?: "",
-                                onValueChange = { viewModel.updateFriendShare(friend.id, it) },
+                                value = uiState.payerAmounts[friend.id] ?: "",
+                                onValueChange = { viewModel.updatePayerAmount(friend.id, it) },
                                 placeholder = { Text("0.00") },
                                 prefix = { Text("Rs. ") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -154,23 +317,40 @@ fun AddExpenseScreen(
                 }
             }
 
-            // Current User Share
+            // Split With Section
+            item {
+                SectionHeader(title = "Split With")
+            }
+
+            // Current User as Participant
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                        containerColor = if (uiState.selectedParticipants.contains("current_user"))
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .padding(12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Checkbox(
+                                checked = uiState.selectedParticipants.contains("current_user"),
+                                onCheckedChange = { viewModel.toggleParticipant("current_user") }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             UserAvatar(name = "Me", size = 40)
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
@@ -179,12 +359,69 @@ fun AddExpenseScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        Text(
-                            text = "Rs. ${uiState.friendShares["current_user"] ?: "0.00"}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+
+                        if (uiState.selectedParticipants.contains("current_user")) {
+                            OutlinedTextField(
+                                value = uiState.participantShares["current_user"] ?: "",
+                                onValueChange = { viewModel.updateParticipantShare("current_user", it) },
+                                placeholder = { Text("0.00") },
+                                prefix = { Text("Rs. ") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.width(120.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Friend Participants
+            items(uiState.friends) { friend ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Checkbox(
+                                checked = uiState.selectedParticipants.contains(friend.id),
+                                onCheckedChange = { viewModel.toggleParticipant(friend.id) }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            UserAvatar(name = friend.name, size = 40)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = friend.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        if (uiState.selectedParticipants.contains(friend.id)) {
+                            OutlinedTextField(
+                                value = uiState.participantShares[friend.id] ?: "",
+                                onValueChange = { viewModel.updateParticipantShare(friend.id, it) },
+                                placeholder = { Text("0.00") },
+                                prefix = { Text("Rs. ") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.width(120.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodyMedium
+                            )
+                        }
                     }
                 }
             }
@@ -194,11 +431,13 @@ fun AddExpenseScreen(
                 PrimaryGradientButton(
                     text = if (uiState.isSaving) "Saving..." else "Save Expense",
                     onClick = { viewModel.saveExpense() },
-                    enabled = !uiState.isSaving && uiState.amount.toDoubleOrNull() != null
+                    enabled = !uiState.isSaving && 
+                             uiState.amount.toDoubleOrNull() != null &&
+                             uiState.selectedPayers.isNotEmpty() &&
+                             uiState.selectedParticipants.isNotEmpty()
                 )
             }
 
             item { Spacer(modifier = Modifier.height(16.dp)) }
         }
     }
-}

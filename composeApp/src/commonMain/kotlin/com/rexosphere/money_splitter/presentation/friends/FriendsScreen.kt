@@ -1,15 +1,14 @@
 package com.rexosphere.money_splitter.presentation.friends
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -21,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rexosphere.money_splitter.ui.components.*
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsScreen(
     modifier: Modifier = Modifier,
@@ -41,75 +40,95 @@ fun FriendsScreen(
         },
         modifier = modifier
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Header
-            Text(
-                text = "Friends",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
-            )
+            item {
+                Text(
+                    text = "Friends",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+            }
             
-            // Instruction text
-            Text(
-                text = "Long press to delete",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
-            ) {
+            if (uiState.friends.isEmpty()) {
+                item {
+                    Text(
+                        text = "No friends yet. Add one to get started!",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 32.dp)
+                    )
+                }
+            } else {
                 items(uiState.friends) { friend ->
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f)
-                            .combinedClickable(
-                                onClick = { },
-                                onLongClick = { viewModel.showDeleteDialog(friend) }
-                            ),
-                        shape = RoundedCornerShape(20.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                     ) {
-                        Column(
+                        Row(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            UserAvatar(name = friend.name, size = 56)
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = friend.name,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            AnimatedBadge(
-                                text = if (friend.isAppUser) "User" else "Contact",
-                                icon = if (friend.isAppUser) "👤" else "📝",
-                                isAppUser = friend.isAppUser
-                            )
+                            UserAvatar(name = friend.name, size = 40)
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = friend.name,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = if (friend.isAppUser) "User" else "Contact",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (friend.isAppUser) 
+                                        MaterialTheme.colorScheme.primary 
+                                    else 
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            
+                            // Edit button
+                            IconButton(
+                                onClick = { viewModel.showEditDialog(friend) },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            
+                            // Delete button
+                            IconButton(
+                                onClick = { viewModel.showDeleteDialog(friend) },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Delete",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
                 }
             }
+            
+            item { Spacer(modifier = Modifier.height(80.dp)) }
         }
 
         // Add Friend Dialog
@@ -124,29 +143,30 @@ fun FriendsScreen(
                     )
                 },
                 text = {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedTextField(
                             value = uiState.newFriendName,
                             onValueChange = { viewModel.updateFriendName(it) },
                             label = { Text("Name *") },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true
                         )
                         OutlinedTextField(
                             value = uiState.newFriendPhone,
                             onValueChange = { viewModel.updateFriendPhone(it) },
                             label = { Text("Phone (optional)") },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true
                         )
                         OutlinedTextField(
                             value = uiState.newFriendEmail,
                             onValueChange = { viewModel.updateFriendEmail(it) },
                             label = { Text("Email (optional)") },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true
                         )
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -168,12 +188,78 @@ fun FriendsScreen(
                     Button(
                         onClick = { viewModel.addFriend() },
                         shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Add")
-                    }
+                    ) { Text("Add") }
                 },
                 dismissButton = {
                     TextButton(onClick = { viewModel.hideAddDialog() }) {
+                        Text("Cancel")
+                    }
+                },
+                shape = RoundedCornerShape(24.dp)
+            )
+        }
+        
+        // Edit Friend Dialog
+        if (uiState.showEditDialog && uiState.friendToEdit != null) {
+            AlertDialog(
+                onDismissRequest = { viewModel.hideEditDialog() },
+                title = {
+                    Text(
+                        "Edit Friend",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            value = uiState.editFriendName,
+                            onValueChange = { viewModel.updateEditFriendName(it) },
+                            label = { Text("Name *") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = uiState.editFriendPhone,
+                            onValueChange = { viewModel.updateEditFriendPhone(it) },
+                            label = { Text("Phone (optional)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = uiState.editFriendEmail,
+                            onValueChange = { viewModel.updateEditFriendEmail(it) },
+                            label = { Text("Email (optional)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Checkbox(
+                                checked = uiState.editFriendIsAppUser,
+                                onCheckedChange = { viewModel.toggleEditIsAppUser(it) }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "This person uses the app",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { viewModel.confirmEditFriend() },
+                        shape = RoundedCornerShape(12.dp)
+                    ) { Text("Save") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.hideEditDialog() }) {
                         Text("Cancel")
                     }
                 },
@@ -201,7 +287,7 @@ fun FriendsScreen(
                 },
                 text = {
                     Text(
-                        "Are you sure you want to delete ${uiState.friendToDelete?.name}? This action cannot be undone.",
+                        "Are you sure you want to delete ${uiState.friendToDelete?.name}?",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 },
@@ -212,9 +298,7 @@ fun FriendsScreen(
                             containerColor = MaterialTheme.colorScheme.error
                         ),
                         shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Delete")
-                    }
+                    ) { Text("Delete") }
                 },
                 dismissButton = {
                     TextButton(onClick = { viewModel.hideDeleteDialog() }) {

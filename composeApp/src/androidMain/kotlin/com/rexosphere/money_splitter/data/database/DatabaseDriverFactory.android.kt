@@ -9,7 +9,7 @@ actual class DatabaseDriverFactory(private val context: Context) {
         return AndroidSqliteDriver(
             schema = MoneySplitterDatabase.Schema,
             context = context,
-            name = "money_splitter.db"
+            name = "money_splitter_v2.db"
         )
     }
 }

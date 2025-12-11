@@ -12,15 +12,22 @@ import kotlinx.coroutines.launch
 data class FriendsUiState(
     val friends: List<User> = emptyList(),
     val showAddDialog: Boolean = false,
+    val showEditDialog: Boolean = false,
     val showDeleteDialog: Boolean = false,
+    val friendToEdit: User? = null,
     val friendToDelete: User? = null,
     val newFriendName: String = "",
     val newFriendPhone: String = "",
     val newFriendEmail: String = "",
-    val newFriendIsAppUser: Boolean = false
+    val newFriendIsAppUser: Boolean = false,
+    // Edit fields
+    val editFriendName: String = "",
+    val editFriendPhone: String = "",
+    val editFriendEmail: String = "",
+    val editFriendIsAppUser: Boolean = false
 )
 
-class FriendsViewModel(private val repository: ExpenseRepository = ExpenseRepository()) : ViewModel() {
+class FriendsViewModel(private val repository: ExpenseRepository = ExpenseRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(FriendsUiState())
     val uiState: StateFlow<FriendsUiState> = _uiState.asStateFlow()
 
@@ -36,6 +43,7 @@ class FriendsViewModel(private val repository: ExpenseRepository = ExpenseReposi
         }
     }
 
+    // Add Dialog
     fun showAddDialog() {
         _uiState.value = _uiState.value.copy(showAddDialog = true)
     }
@@ -81,7 +89,63 @@ class FriendsViewModel(private val repository: ExpenseRepository = ExpenseReposi
         }
     }
     
-    // Delete functionality
+    // Edit Dialog
+    fun showEditDialog(friend: User) {
+        _uiState.value = _uiState.value.copy(
+            showEditDialog = true,
+            friendToEdit = friend,
+            editFriendName = friend.name,
+            editFriendPhone = friend.phoneNumber ?: "",
+            editFriendEmail = friend.email ?: "",
+            editFriendIsAppUser = friend.isAppUser
+        )
+    }
+    
+    fun hideEditDialog() {
+        _uiState.value = _uiState.value.copy(
+            showEditDialog = false,
+            friendToEdit = null,
+            editFriendName = "",
+            editFriendPhone = "",
+            editFriendEmail = "",
+            editFriendIsAppUser = false
+        )
+    }
+    
+    fun updateEditFriendName(name: String) {
+        _uiState.value = _uiState.value.copy(editFriendName = name)
+    }
+    
+    fun updateEditFriendPhone(phone: String) {
+        _uiState.value = _uiState.value.copy(editFriendPhone = phone)
+    }
+    
+    fun updateEditFriendEmail(email: String) {
+        _uiState.value = _uiState.value.copy(editFriendEmail = email)
+    }
+    
+    fun toggleEditIsAppUser(isAppUser: Boolean) {
+        _uiState.value = _uiState.value.copy(editFriendIsAppUser = isAppUser)
+    }
+    
+    fun confirmEditFriend() {
+        val friend = _uiState.value.friendToEdit ?: return
+        val name = _uiState.value.editFriendName
+        if (name.isBlank()) return
+        
+        viewModelScope.launch {
+            repository.updateFriend(
+                friendId = friend.id,
+                name = name,
+                phoneNumber = _uiState.value.editFriendPhone.takeIf { it.isNotBlank() },
+                email = _uiState.value.editFriendEmail.takeIf { it.isNotBlank() },
+                isAppUser = _uiState.value.editFriendIsAppUser
+            )
+            hideEditDialog()
+        }
+    }
+    
+    // Delete Dialog
     fun showDeleteDialog(friend: User) {
         _uiState.value = _uiState.value.copy(
             showDeleteDialog = true,
