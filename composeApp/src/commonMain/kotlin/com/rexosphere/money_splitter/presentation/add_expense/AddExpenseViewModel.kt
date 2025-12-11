@@ -30,6 +30,7 @@ data class AddExpenseUiState(
     val friends: List<User> = emptyList(),
     val selectedFriends: Set<String> = emptySet(),
     val friendShares: Map<String, String> = emptyMap(),
+    val includeSelf: Boolean = true,
     val isSaving: Boolean = false,
     val savedSuccessfully: Boolean = false
 )
@@ -70,6 +71,11 @@ class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRep
         updateShares()
     }
 
+    fun toggleIncludeSelf() {
+        _uiState.value = _uiState.value.copy(includeSelf = !_uiState.value.includeSelf)
+        updateShares()
+    }
+
     fun updateFriendShare(friendId: String, share: String) {
         val shares = _uiState.value.friendShares.toMutableMap()
         shares[friendId] = share
@@ -78,7 +84,7 @@ class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRep
 
     private fun updateShares() {
         val amount = _uiState.value.amount.toDoubleOrNull() ?: return
-        val selectedCount = _uiState.value.selectedFriends.size + 1 // +1 for current user
+        val selectedCount = _uiState.value.selectedFriends.size + if (_uiState.value.includeSelf) 1 else 0
         if (selectedCount == 0) return
 
         val equalShare = amount / selectedCount
@@ -87,7 +93,10 @@ class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRep
         _uiState.value.selectedFriends.forEach { friendId ->
             shares[friendId] = formatAmount(equalShare)
         }
-        shares[repository.currentUser.id] = formatAmount(equalShare)
+        
+        if (_uiState.value.includeSelf) {
+            shares[repository.currentUser.id] = formatAmount(equalShare)
+        }
 
         _uiState.value = _uiState.value.copy(friendShares = shares)
     }
@@ -103,9 +112,11 @@ class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRep
         viewModelScope.launch {
             val participants = mutableMapOf<User, Double>()
 
-            // Add current user
-            val currentUserShare = state.friendShares[repository.currentUser.id]?.toDoubleOrNull() ?: 0.0
-            participants[repository.currentUser] = currentUserShare
+            // Add current user only if included
+            if (state.includeSelf) {
+                val currentUserShare = state.friendShares[repository.currentUser.id]?.toDoubleOrNull() ?: 0.0
+                participants[repository.currentUser] = currentUserShare
+            }
 
             // Add selected friends
             state.friends.filter { state.selectedFriends.contains(it.id) }.forEach { friend ->

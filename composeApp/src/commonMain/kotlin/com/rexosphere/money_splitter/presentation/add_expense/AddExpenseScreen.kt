@@ -170,7 +170,15 @@ fun AddExpenseScreen(
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Checkbox(
+                                checked = uiState.includeSelf,
+                                onCheckedChange = { viewModel.toggleIncludeSelf() }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             UserAvatar(name = "Me", size = 40)
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
@@ -179,12 +187,15 @@ fun AddExpenseScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        Text(
-                            text = "Rs. ${uiState.friendShares["current_user"] ?: "0.00"}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        
+                        if (uiState.includeSelf) {
+                            Text(
+                                text = "Rs. ${uiState.friendShares["current_user"] ?: "0.00"}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
                 }
             }

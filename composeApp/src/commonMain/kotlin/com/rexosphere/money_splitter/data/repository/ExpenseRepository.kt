@@ -216,6 +216,59 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
             _groups.value = _groups.value.filter { it.id != groupId }
         }
     }
+    
+    // Update a friend
+    fun updateFriend(
+        friendId: String,
+        name: String,
+        phoneNumber: String? = null,
+        email: String? = null,
+        isAppUser: Boolean = false
+    ) {
+        if (useDatabase) {
+            val existingUser = databaseHelper?.getUserById(friendId)
+            if (existingUser != null) {
+                val updatedUser = existingUser.copy(
+                    name = name,
+                    phoneNumber = phoneNumber,
+                    email = email,
+                    isAppUser = isAppUser
+                )
+                databaseHelper?.insertUser(updatedUser)
+                refreshFromDatabase()
+            }
+        } else {
+            _friends.value = _friends.value.map { friend ->
+                if (friend.id == friendId) {
+                    friend.copy(
+                        name = name,
+                        phoneNumber = phoneNumber,
+                        email = email,
+                        isAppUser = isAppUser
+                    )
+                } else {
+                    friend
+                }
+            }
+        }
+    }
+    
+    // Update a group
+    fun updateGroup(groupId: String, name: String, members: List<User>) {
+        if (useDatabase) {
+            val updatedGroup = Group(id = groupId, name = name, members = members)
+            databaseHelper?.insertGroup(updatedGroup)
+            refreshFromDatabase()
+        } else {
+            _groups.value = _groups.value.map { group ->
+                if (group.id == groupId) {
+                    group.copy(name = name, members = members)
+                } else {
+                    group
+                }
+            }
+        }
+    }
 
     @OptIn(ExperimentalUuidApi::class)
     private fun updatePaymentsFromExpenses() {
