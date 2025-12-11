@@ -17,43 +17,88 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rexosphere.money_splitter.ui.components.*
+import androidx.compose.material.icons.filled.Close
 
 @Composable
-fun AddExpenseScreen(
-    modifier: Modifier = Modifier,
+fun AddExpenseDialog(
+    onDismissRequest: () -> Unit,
     viewModel: AddExpenseViewModel = viewModel { AddExpenseViewModel() }
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val snackbarHostState = androidx.compose.material3.SnackbarHostState()
-
+    
+    // Auto-dismiss when saved successfully
     LaunchedEffect(uiState.savedSuccessfully) {
         if (uiState.savedSuccessfully) {
-            snackbarHostState.showSnackbar("Expense saved successfully!")
+            // Give a moment to see the success state/snackbar if we had one inside
+            // But since we want to close the dialog, let's just close it
+            // We might want to clear the form state here
             viewModel.resetForm()
+            onDismissRequest()
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        modifier = modifier
-    ) { paddingValues ->
-        LazyColumn(
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false // Full width/height or custom
+        )
+    ) {
+        Surface(
             modifier = Modifier
-                .padding(paddingValues)
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
         ) {
-            item { Spacer(modifier = Modifier.height(8.dp)) }
-            
-            // Header
-            item {
-                Text(
-                    text = "Add Expense",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+            Column {
+                // Dialog Header with Close Button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Add Expense",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = onDismissRequest) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Close,
+                            contentDescription = "Close"
+                        )
+                    }
+                }
+                
+                AddExpenseContent(
+                    viewModel = viewModel,
+                    modifier = Modifier.weight(1f)
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun AddExpenseContent(
+    modifier: Modifier = Modifier,
+    viewModel: AddExpenseViewModel
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item { Spacer(modifier = Modifier.height(0.dp)) }
+        
+        // Removed Header as it's now in the Dialog wrapper
+
 
             // Amount Input Card
             item {
@@ -379,4 +424,3 @@ fun AddExpenseScreen(
             item { Spacer(modifier = Modifier.height(16.dp)) }
         }
     }
-}

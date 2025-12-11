@@ -12,7 +12,9 @@ import kotlinx.coroutines.launch
 data class HomeUiState(
     val netBalanceOwed: Double = 0.0,
     val netBalanceOwe: Double = 0.0,
-    val friendDebts: List<Pair<User, Double>> = emptyList()
+    val friendDebts: List<Pair<User, Double>> = emptyList(),
+    val allDebts: List<Triple<User, User, Double>> = emptyList(), // (debtor, creditor, amount)
+    val recentExpenses: List<com.rexosphere.money_splitter.domain.model.Expense> = emptyList()
 )
 
 class HomeViewModel(private val repository: ExpenseRepository = ExpenseRepository) : ViewModel() {
@@ -28,6 +30,15 @@ class HomeViewModel(private val repository: ExpenseRepository = ExpenseRepositor
             // Observe payments to automatically update when expenses change
             repository.payments.collect { _ ->
                 updateBalances()
+            }
+        }
+        
+        // Also observe expenses for the summary
+        viewModelScope.launch {
+            repository.expenses.collect { expenses ->
+                _uiState.value = _uiState.value.copy(
+                    recentExpenses = expenses.sortedByDescending { it.date }.take(5)
+                )
             }
         }
     }
@@ -46,29 +57,32 @@ class HomeViewModel(private val repository: ExpenseRepository = ExpenseRepositor
             }
         }
 
-        // Get simplified debts for friend-by-friend breakdown
-        val simplifiedDebts = repository.getSimplifiedDebts()
-        val friendDebtMap = mutableMapOf<User, Double>()
+        // Get ALL debts (not simplified) for complete picture
+        val allDebts = repository.getAllDebts()
 
+        // Get simplified debts for calculating what YOU owe/are owed
+        val simplifiedDebts = repository.getSimplifiedDebts()
+        val myDebts = mutableMapOf<User, Double>()
         simplifiedDebts.forEach { (debtor, creditorAmount) ->
             val (creditor, amount) = creditorAmount
 
             when {
                 debtor.id == currentUserId -> {
                     // We owe someone
-                    friendDebtMap[creditor] = -(friendDebtMap[creditor] ?: 0.0) - amount
+                    myDebts[creditor] = -(myDebts[creditor] ?: 0.0) - amount
                 }
                 creditor.id == currentUserId -> {
                     // Someone owes us
-                    friendDebtMap[debtor] = (friendDebtMap[debtor] ?: 0.0) + amount
+                    myDebts[debtor] = (myDebts[debtor] ?: 0.0) + amount
                 }
             }
         }
 
-        _uiState.value = HomeUiState(
+        _uiState.value = _uiState.value.copy(
             netBalanceOwed = totalOwed,
             netBalanceOwe = totalOwe,
-            friendDebts = friendDebtMap.toList().sortedByDescending { kotlin.math.abs(it.second) }
+            friendDebts = myDebts.toList().sortedByDescending { kotlin.math.abs(it.second) },
+            allDebts = allDebts
         )
     }
 }

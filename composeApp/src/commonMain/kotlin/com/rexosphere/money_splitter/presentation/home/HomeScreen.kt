@@ -119,16 +119,68 @@ fun HomeScreen(
             }
         }
 
+        // Recent Expenses Section
+        if (uiState.recentExpenses.isNotEmpty()) {
+            item {
+                SectionHeader(
+                    title = "Recent Expenses",
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
+            items(uiState.recentExpenses) { expense ->
+                PremiumCard {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = expense.description,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "${expense.date}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            
+                            Text(
+                                text = "Rs.${formatAmount(expense.amount)}",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Participants
+                        Text(
+                            text = "Split between: ${expense.participants.keys.joinToString(", ") { it.name }}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
         // Section Header
         item {
             SectionHeader(
-                title = "Friends & Balances",
+                title = "All Balances",
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
 
-        // Friend Debts List
-        items(uiState.friendDebts) { (friend, amount) ->
+        // All Friend Debts List (including friend-to-friend)
+        items(uiState.allDebts) { (debtor, creditor, amount) ->
             PremiumCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -139,33 +191,35 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.weight(1f)
                     ) {
-                        UserAvatar(name = friend.name, size = 48)
+                        UserAvatar(name = debtor.name, size = 48)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = friend.name,
+                                text = debtor.name,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = if (amount >= 0) "owes you" else "you owe",
+                                text = "owes ${creditor.name}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                     
-                    AmountText(
-                        amount = amount,
-                        style = MaterialTheme.typography.titleLarge
+                    Text(
+                        text = "Rs.${formatAmount(amount)}",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
         }
         
         // Empty State
-        if (uiState.friendDebts.isEmpty()) {
+        if (uiState.allDebts.isEmpty()) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -188,7 +242,7 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "No pending balances with friends",
+                            text = "No pending balances",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

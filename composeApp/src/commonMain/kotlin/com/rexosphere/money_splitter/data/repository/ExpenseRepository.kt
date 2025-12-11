@@ -101,6 +101,34 @@ object ExpenseRepository {
         }
     }
 
+    // Settle all payments between two specific users
+    fun settlePaymentsByUserPair(debtorId: String, creditorId: String) {
+        if (useDatabase) {
+            // Find all pending payments from debtor to creditor
+            val paymentsToSettle = databaseHelper?.getAllPayments()?.filter { payment ->
+                !payment.isSettled &&
+                payment.from.id == debtorId &&
+                payment.to.id == creditorId
+            } ?: emptyList()
+            
+            paymentsToSettle.forEach { payment ->
+                databaseHelper?.settlePayment(payment.id)
+            }
+            refreshFromDatabase()
+        } else {
+            _payments.value = _payments.value.map { payment ->
+                if (!payment.isSettled && 
+                    payment.from.id == debtorId && 
+                    payment.to.id == creditorId) {
+                    payment.copy(isSettled = true)
+                } else {
+                    payment
+                }
+            }
+        }
+    }
+
+
     @OptIn(ExperimentalUuidApi::class)
     fun addFriend(
         name: String,
@@ -304,6 +332,41 @@ object ExpenseRepository {
 
         return balances
     }
+
+    // Get ALL debts between user pairs (not simplified)
+    // Returns: List of (debtor, creditor, amount)
+    fun getAllDebts(): List<Triple<User, User, Double>> {
+        val debtMap = mutableMapOf<Pair<String, String>, Triple<User, User, Double>>()
+
+        _payments.value.filter { !it.isSettled }.forEach { payment ->
+            val key = Pair(payment.from.id, payment.to.id)
+            val reverseKey = Pair(payment.to.id, payment.from.id)
+
+            // Check if there's already a debt in opposite direction
+            if (debtMap.containsKey(reverseKey)) {
+                val existing = debtMap[reverseKey]!!
+                val newAmount = existing.third - payment.amount
+                if (newAmount > 0.01) {
+                    debtMap[reverseKey] = Triple(existing.first, existing.second, newAmount)
+                } else if (newAmount < -0.01) {
+                    debtMap.remove(reverseKey)
+                    debtMap[key] = Triple(payment.from, payment.to, kotlin.math.abs(newAmount))
+                } else {
+                    debtMap.remove(reverseKey)
+                }
+            } else {
+                val existing = debtMap[key]
+                if (existing != null) {
+                    debtMap[key] = Triple(existing.first, existing.second, existing.third + payment.amount)
+                } else {
+                    debtMap[key] = Triple(payment.from, payment.to, payment.amount)
+                }
+            }
+        }
+
+        return debtMap.values.toList().sortedByDescending { it.third }
+    }
+
 
     // Get simplified debts (reduce transactions between users)
     fun getSimplifiedDebts(): List<Pair<User, Pair<User, Double>>> {

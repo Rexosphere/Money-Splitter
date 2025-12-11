@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -26,12 +27,11 @@ fun PaymentsScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Column(
-        modifier = modifier
-            .fillMaxSize()
+        modifier = modifier.fillMaxSize()
     ) {
         // Header
         Text(
-            text = "Payments",
+            text = "Settle Up",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
@@ -43,20 +43,27 @@ fun PaymentsScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Pending Payments Section
-            if (uiState.pendingPayments.isNotEmpty()) {
+            // Who to Pay Section
+            if (uiState.simplifiedDebts.isNotEmpty()) {
                 item {
                     SectionHeader(
-                        title = "Pending",
+                        title = "Who to Pay",
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                 }
 
-                items(uiState.pendingPayments) { payment ->
+                items(uiState.simplifiedDebts) { debt ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (debt.debtor.id == viewModel.repository.currentUser.id) {
+                                MaterialTheme.colorScheme.errorContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        )
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp)
@@ -70,57 +77,68 @@ fun PaymentsScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    UserAvatar(name = payment.from.name, size = 48)
+                                    UserAvatar(name = debt.debtor.name, size = 48)
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
                                         Text(
-                                            text = payment.from.name,
+                                            text = debt.debtor.name,
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.SemiBold
                                         )
                                         Text(
-                                            text = "owes ${payment.to.name}",
+                                            text = "owes ${debt.creditor.name}",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
                                 
-                                AmountText(
-                                    amount = payment.amount,
-                                    style = MaterialTheme.typography.titleLarge
+                                Text(
+                                    text = "Rs.${formatAmount(debt.amount)}",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(12.dp))
+                            // Show action button only if current user is involved
+                            if (debt.debtor.id == viewModel.repository.currentUser.id || 
+                                debt.creditor.id == viewModel.repository.currentUser.id) {
+                                Spacer(modifier = Modifier.height(12.dp))
 
-                            Button(
-                                onClick = { viewModel.settlePayment(payment.id) },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary
-                                )
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Mark as Settled")
+                                Button(
+                                    onClick = { viewModel.showRecordPaymentDialog(debt) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Payment,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        if (debt.debtor.id == viewModel.repository.currentUser.id) 
+                                            "Record Payment" 
+                                        else 
+                                            "Confirm Received"
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // Settled Payments Section
+            // Payment History Section
             if (uiState.settledPayments.isNotEmpty()) {
                 item {
                     SectionHeader(
-                        title = "Settled",
-                        modifier = Modifier.padding(vertical = 8.dp)
+                        title = "Payment History",
+                        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                     )
                 }
 
@@ -152,7 +170,7 @@ fun PaymentsScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
-                                        text = "Rs.${com.rexosphere.money_splitter.ui.components.formatAmount(payment.amount)}",
+                                        text = "Rs.${formatAmount(payment.amount)}",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                                     )
@@ -171,7 +189,7 @@ fun PaymentsScreen(
             }
 
             // Empty State
-            if (uiState.pendingPayments.isEmpty() && uiState.settledPayments.isEmpty()) {
+            if (uiState.simplifiedDebts.isEmpty() && uiState.settledPayments.isEmpty()) {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -188,13 +206,13 @@ fun PaymentsScreen(
                         ) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "No Payments Yet",
+                                text = "All Settled!",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Add expenses to track payments",
+                                text = "No pending payments",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -205,5 +223,47 @@ fun PaymentsScreen(
 
             item { Spacer(modifier = Modifier.height(16.dp)) }
         }
+    }
+
+    // Record Payment Confirmation Dialog
+    if (uiState.showRecordPaymentDialog && uiState.selectedDebt != null) {
+        val debt = uiState.selectedDebt!!
+        AlertDialog(
+            onDismissRequest = { viewModel.hideRecordPaymentDialog() },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Payment,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            title = {
+                Text(
+                    "Confirm Payment",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    "Mark Rs.${formatAmount(debt.amount)} from ${debt.debtor.name} to ${debt.creditor.name} as paid?",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.recordPayment(debt) },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.hideRecordPaymentDialog() }) {
+                    Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(24.dp)
+        )
     }
 }
