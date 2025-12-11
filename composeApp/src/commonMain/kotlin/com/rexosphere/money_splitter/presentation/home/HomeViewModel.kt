@@ -44,36 +44,39 @@ class HomeViewModel(private val repository: ExpenseRepository = ExpenseRepositor
     }
 
     private fun updateBalances() {
-        val balances = repository.getNetBalances()
         val currentUserId = repository.currentUser.id
-
+        
+        // Get the optimized payments (created by minimum cash flow algorithm)
+        val payments = repository.getCurrentPayments().filter { !it.isSettled }
+        
+        // Calculate total owed to me and total I owe
         var totalOwed = 0.0
         var totalOwe = 0.0
-
-        balances.forEach { (user, balance) ->
-            if (user.id == currentUserId) {
-                if (balance > 0) totalOwed = balance
-                else totalOwe = kotlin.math.abs(balance)
+        
+        payments.forEach { payment ->
+            if (payment.to.id == currentUserId) {
+                totalOwed += payment.amount
+            } else if (payment.from.id == currentUserId) {
+                totalOwe += payment.amount
             }
         }
-
-        // Get ALL debts (not simplified) for complete picture
-        val allDebts = repository.getAllDebts()
-
-        // Get simplified debts for calculating what YOU owe/are owed
-        val simplifiedDebts = repository.getSimplifiedDebts()
+        
+        // Build allDebts list from payments (already optimized!)
+        val allDebts = payments.map { payment ->
+            Triple(payment.from, payment.to, payment.amount)
+        }.sortedByDescending { it.third }
+        
+        // Build myDebts for the summary cards
         val myDebts = mutableMapOf<User, Double>()
-        simplifiedDebts.forEach { (debtor, creditorAmount) ->
-            val (creditor, amount) = creditorAmount
-
+        payments.forEach { payment ->
             when {
-                debtor.id == currentUserId -> {
-                    // We owe someone
-                    myDebts[creditor] = -(myDebts[creditor] ?: 0.0) - amount
+                payment.from.id == currentUserId -> {
+                    // I owe someone
+                    myDebts[payment.to] = -(myDebts[payment.to] ?: 0.0) - payment.amount
                 }
-                creditor.id == currentUserId -> {
-                    // Someone owes us
-                    myDebts[debtor] = (myDebts[debtor] ?: 0.0) + amount
+                payment.to.id == currentUserId -> {
+                    // Someone owes me
+                    myDebts[payment.from] = (myDebts[payment.from] ?: 0.0) + payment.amount
                 }
             }
         }

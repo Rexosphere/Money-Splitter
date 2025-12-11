@@ -24,6 +24,9 @@ object ExpenseRepository {
 
     private val _payments = MutableStateFlow<List<Payment>>(emptyList())
     val payments: Flow<List<Payment>> = _payments.asStateFlow()
+    
+    // Helper method to get current payments synchronously
+    fun getCurrentPayments(): List<Payment> = _payments.value
 
     private val _groups = MutableStateFlow<List<Group>>(emptyList())
     val groups: Flow<List<Group>> = _groups.asStateFlow()
@@ -56,8 +59,10 @@ object ExpenseRepository {
         databaseHelper?.let { db ->
             _friends.value = db.getAllFriends()
             _expenses.value = db.getAllExpenses()
-            _payments.value = db.getAllPayments()
             _groups.value = db.getAllGroups()
+            
+            // Recalculate payments using optimal algorithm instead of loading cached ones
+            updatePaymentsFromExpenses()
         }
     }
 
@@ -281,40 +286,67 @@ object ExpenseRepository {
 
     @OptIn(ExperimentalUuidApi::class)
     private fun updatePaymentsFromExpenses() {
-        val newPayments = mutableListOf<Payment>()
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-
-        // Convert each expense into individual payments
+        
+        // Step 1: Calculate net balance for each user across ALL expenses
+        // Positive = they are owed money (paid more than their share)
+        // Negative = they owe money (paid less than their share)
+        val netBalances = mutableMapOf<User, Double>()
+        
         _expenses.value.forEach { expense ->
-            // For each participant, calculate what they owe
-            expense.participants.forEach { (participant, share) ->
-                // Calculate how much this participant paid
-                val participantPaid = expense.paidBy[participant] ?: 0.0
-                val participantOwes = share - participantPaid
-                
-                if (participantOwes > 0.01) { // They owe money
-                    // They need to pay each payer proportionally
-                    expense.paidBy.forEach { (payer, paidAmount) ->
-                        if (payer.id != participant.id) {
-                            val payerShare = paidAmount / expense.amount
-                            val amountToPay = participantOwes * payerShare
-                            
-                            if (amountToPay > 0.01) {
-                                newPayments.add(
-                                    Payment(
-                                        id = Uuid.random().toString(),
-                                        from = participant,
-                                        to = payer,
-                                        amount = amountToPay,
-                                        date = now,
-                                        isSettled = false
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
+            // Add what each person paid
+            expense.paidBy.forEach { (payer, amountPaid) ->
+                netBalances[payer] = (netBalances[payer] ?: 0.0) + amountPaid
             }
+            
+            // Subtract what each person's share is
+            expense.participants.forEach { (participant, share) ->
+                netBalances[participant] = (netBalances[participant] ?: 0.0) - share
+            }
+        }
+        
+        // Step 2: Separate into creditors (owed money) and debtors (owe money)
+        val creditors = netBalances.filter { it.value > 0.01 }
+            .map { it.key to it.value }
+            .sortedByDescending { it.second }
+            .toMutableList()
+        
+        val debtors = netBalances.filter { it.value < -0.01 }
+            .map { it.key to kotlin.math.abs(it.value) }
+            .sortedByDescending { it.second }
+            .toMutableList()
+        
+        // Step 3: Create optimal payments using greedy minimum cash flow algorithm
+        val newPayments = mutableListOf<Payment>()
+        
+        var i = 0
+        var j = 0
+        while (i < creditors.size && j < debtors.size) {
+            val (creditor, credit) = creditors[i]
+            val (debtor, debt) = debtors[j]
+            
+            val amount = minOf(credit, debt)
+            
+            if (amount > 0.01) {
+                newPayments.add(
+                    Payment(
+                        id = Uuid.random().toString(),
+                        from = debtor,
+                        to = creditor,
+                        amount = amount,
+                        date = now,
+                        isSettled = false
+                    )
+                )
+            }
+            
+            // Update remaining amounts
+            creditors[i] = creditor to (credit - amount)
+            debtors[j] = debtor to (debt - amount)
+            
+            // Move to next if settled
+            if (creditors[i].second < 0.01) i++
+            if (debtors[j].second < 0.01) j++
         }
 
         // Preserve settled payments
