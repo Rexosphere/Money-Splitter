@@ -11,7 +11,8 @@ import kotlinx.coroutines.launch
 
 data class ExpensesUiState(
     val expenses: List<Expense> = emptyList(),
-    val isAddExpenseVisible: Boolean = false
+    val isAddExpenseVisible: Boolean = false,
+    val editingExpense: Expense? = null // Track expense being edited
 )
 
 class ExpensesViewModel(private val repository: ExpenseRepository = ExpenseRepository) : ViewModel() {
@@ -33,10 +34,20 @@ class ExpensesViewModel(private val repository: ExpenseRepository = ExpenseRepos
     }
 
     fun showAddExpenseDialog() {
-        _uiState.value = _uiState.value.copy(isAddExpenseVisible = true)
+        _uiState.value = _uiState.value.copy(isAddExpenseVisible = true, editingExpense = null)
     }
 
     fun hideAddExpenseDialog() {
-        _uiState.value = _uiState.value.copy(isAddExpenseVisible = false)
+        _uiState.value = _uiState.value.copy(isAddExpenseVisible = false, editingExpense = null)
+    }
+
+    fun startEditing(expense: Expense) {
+        _uiState.value = _uiState.value.copy(isAddExpenseVisible = true, editingExpense = expense)
+    }
+
+    fun deleteExpense(expenseId: String) {
+        viewModelScope.launch {
+            repository.deleteExpense(expenseId)
+        }
     }
 }

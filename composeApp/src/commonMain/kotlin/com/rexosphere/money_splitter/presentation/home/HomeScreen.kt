@@ -119,58 +119,6 @@ fun HomeScreen(
             }
         }
 
-        // Recent Expenses Section
-        if (uiState.recentExpenses.isNotEmpty()) {
-            item {
-                SectionHeader(
-                    title = "Recent Expenses",
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-
-            items(uiState.recentExpenses) { expense ->
-                PremiumCard {
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = expense.description,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "${expense.date}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            
-                            Text(
-                                text = "Rs.${formatAmount(expense.amount)}",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // Participants
-                        Text(
-                            text = "Split between: ${expense.participants.keys.joinToString(", ") { it.name }}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
-
         // Section Header
         item {
             SectionHeader(

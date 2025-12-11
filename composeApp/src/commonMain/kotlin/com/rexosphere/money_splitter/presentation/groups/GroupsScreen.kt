@@ -2,6 +2,7 @@ package com.rexosphere.money_splitter.presentation.groups
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -9,6 +10,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -39,110 +41,106 @@ fun GroupsScreen(
         },
         modifier = modifier
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Header
-            Text(
-                text = "Groups",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
-            )
-
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            item {
+                Text(
+                    text = "Groups",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+            }
+            
+            if (uiState.groups.isEmpty()) {
+                item {
+                    Text(
+                        text = "No groups yet. Create one to get started!",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 32.dp)
+                    )
+                }
+            } else {
                 items(uiState.groups) { group ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                     ) {
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                            // Action buttons in top-right corner
-                            Row(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(4.dp)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Group icon
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(40.dp)
                             ) {
-                                // Edit button
-                                IconButton(
-                                    onClick = { viewModel.showEditDialog(group) },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
+                                Box(contentAlignment = Alignment.Center) {
                                     Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = "Edit",
+                                        imageVector = Icons.Default.Group,
+                                        contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                                // Delete button
-                                IconButton(
-                                    onClick = { viewModel.showDeleteDialog(group) },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Delete",
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 }
                             }
                             
-                            // Main content
-                            Column(
-                                modifier = Modifier.padding(16.dp)
-                            ) {
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = group.name,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold
                                 )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                
-                                // Members Row
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy((-8).dp)
-                                ) {
-                                    group.members.take(5).forEach { member ->
-                                        UserAvatar(name = member.name, size = 36)
-                                    }
-                                    if (group.members.size > 5) {
-                                        Box(
-                                            modifier = Modifier.size(36.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = "+${group.members.size - 5}",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-                                }
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = "${group.members.size} members",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
+                            
+                            // Edit button
+                            IconButton(
+                                onClick = { viewModel.showEditDialog(group) },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            
+                            // Delete button
+                            IconButton(
+                                onClick = { viewModel.showDeleteDialog(group) },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Delete",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
                 }
-                
-                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
+            
+            item { Spacer(modifier = Modifier.height(80.dp)) }
         }
 
         // Create Group Dialog
@@ -157,16 +155,15 @@ fun GroupsScreen(
                     )
                 },
                 text = {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedTextField(
                             value = uiState.newGroupName,
                             onValueChange = { viewModel.updateGroupName(it) },
                             label = { Text("Group Name") },
                             placeholder = { Text("e.g., Roommates") },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true
                         )
                         
                         Text(
@@ -175,9 +172,7 @@ fun GroupsScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                         
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             // Current user option
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -187,8 +182,7 @@ fun GroupsScreen(
                                     checked = uiState.includeSelf,
                                     onCheckedChange = { viewModel.toggleIncludeSelf() }
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                UserAvatar(name = "Me", size = 32)
+                                UserAvatar(name = "Me", size = 28)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "You",
@@ -206,8 +200,7 @@ fun GroupsScreen(
                                         checked = uiState.selectedMembers.contains(friend.id),
                                         onCheckedChange = { viewModel.toggleMember(friend.id) }
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    UserAvatar(name = friend.name, size = 32)
+                                    UserAvatar(name = friend.name, size = 28)
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = friend.name,
@@ -222,9 +215,7 @@ fun GroupsScreen(
                     Button(
                         onClick = { viewModel.createGroup() },
                         shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Create")
-                    }
+                    ) { Text("Create") }
                 },
                 dismissButton = {
                     TextButton(onClick = { viewModel.hideCreateDialog() }) {
@@ -239,13 +230,6 @@ fun GroupsScreen(
         if (uiState.showEditDialog && uiState.groupToEdit != null) {
             AlertDialog(
                 onDismissRequest = { viewModel.hideEditDialog() },
-                icon = {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
                 title = {
                     Text(
                         "Edit Group",
@@ -254,15 +238,14 @@ fun GroupsScreen(
                     )
                 },
                 text = {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedTextField(
                             value = uiState.editGroupName,
                             onValueChange = { viewModel.updateEditGroupName(it) },
                             label = { Text("Group Name") },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true
                         )
                         
                         Text(
@@ -271,9 +254,7 @@ fun GroupsScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                         
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             // Current user option
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -283,8 +264,7 @@ fun GroupsScreen(
                                     checked = uiState.editIncludeSelf,
                                     onCheckedChange = { viewModel.toggleEditIncludeSelf() }
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                UserAvatar(name = "Me", size = 32)
+                                UserAvatar(name = "Me", size = 28)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "You",
@@ -302,8 +282,7 @@ fun GroupsScreen(
                                         checked = uiState.editSelectedMembers.contains(friend.id),
                                         onCheckedChange = { viewModel.toggleEditMember(friend.id) }
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    UserAvatar(name = friend.name, size = 32)
+                                    UserAvatar(name = friend.name, size = 28)
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = friend.name,
@@ -318,9 +297,7 @@ fun GroupsScreen(
                     Button(
                         onClick = { viewModel.confirmEditGroup() },
                         shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Save")
-                    }
+                    ) { Text("Save") }
                 },
                 dismissButton = {
                     TextButton(onClick = { viewModel.hideEditDialog() }) {
@@ -351,7 +328,7 @@ fun GroupsScreen(
                 },
                 text = {
                     Text(
-                        "Are you sure you want to delete \"${uiState.groupToDelete?.name}\"? This action cannot be undone.",
+                        "Are you sure you want to delete \"${uiState.groupToDelete?.name}\"?",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 },
@@ -362,9 +339,7 @@ fun GroupsScreen(
                             containerColor = MaterialTheme.colorScheme.error
                         ),
                         shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Delete")
-                    }
+                    ) { Text("Delete") }
                 },
                 dismissButton = {
                     TextButton(onClick = { viewModel.hideDeleteDialog() }) {

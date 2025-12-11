@@ -26,8 +26,10 @@ private fun formatAmount(amount: Double): String {
 }
 
 data class AddExpenseUiState(
+    val editingId: String? = null, // Track if editing existing expense
     val amount: String = "",
     val description: String = "",
+    val category: com.rexosphere.money_splitter.domain.model.ExpenseCategory = com.rexosphere.money_splitter.domain.model.ExpenseCategory.OTHER,
     val friends: List<User> = emptyList(),
     val groups: List<Group> = emptyList(),
     val selectedGroup: Group? = null,
@@ -81,13 +83,13 @@ class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRep
             selectedGroup = group,
             selectedParticipants = memberIds
         )
-        updateParticipantShares()
+        calculateEqualShares()
     }
 
     fun updateAmount(amount: String) {
         _uiState.value = _uiState.value.copy(amount = amount)
         updatePayerAmounts()
-        updateParticipantShares()
+        calculateEqualShares()
     }
 
     fun updateDescription(description: String) {
@@ -136,7 +138,7 @@ class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRep
             selected + userId
         }
         _uiState.value = _uiState.value.copy(selectedParticipants = newSelected)
-        updateParticipantShares()
+        calculateEqualShares()
     }
 
     fun updateParticipantShare(userId: String, share: String) {
@@ -145,8 +147,12 @@ class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRep
         _uiState.value = _uiState.value.copy(participantShares = shares)
     }
 
-    private fun updateParticipantShares() {
-        val totalAmount = _uiState.value.amount.toDoubleOrNull() ?: return
+    fun setCategory(category: com.rexosphere.money_splitter.domain.model.ExpenseCategory) {
+        _uiState.value = _uiState.value.copy(category = category)
+    }
+
+    private fun calculateEqualShares() {
+        val totalAmount = _uiState.value.amount.toDoubleOrNull() ?: 0.0
         val participantCount = _uiState.value.selectedParticipants.size
         if (participantCount == 0) return
 
@@ -201,10 +207,11 @@ class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRep
             }
 
             val expense = Expense(
-                id = Uuid.random().toString(),
+                id = state.editingId ?: Uuid.random().toString(),
                 description = description,
                 amount = amount,
                 date = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+                category = state.category,
                 paidBy = payers,
                 participants = participants
             )
@@ -218,7 +225,29 @@ class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRep
         }
     }
 
+    fun loadExpenseForEditing(expense: com.rexosphere.money_splitter.domain.model.Expense) {
+        val payerIds = expense.paidBy.keys.map { it.id }.toSet()
+        val payerAmounts = expense.paidBy.entries.associate { (user, amount) -> 
+            user.id to formatAmount(amount) 
+        }
+        val participantIds = expense.participants.keys.map { it.id }.toSet()
+        val participantShares = expense.participants.entries.associate { (user, share) -> 
+            user.id to formatAmount(share) 
+        }
+        
+        _uiState.value = _uiState.value.copy(
+            editingId = expense.id,
+            amount = formatAmount(expense.amount),
+            description = expense.description,
+            category = expense.category,
+            selectedPayers = payerIds,
+            payerAmounts = payerAmounts,
+            selectedParticipants = participantIds,
+            participantShares = participantShares
+        )
+    }
+
     fun resetForm() {
-        _uiState.value = AddExpenseUiState(friends = _uiState.value.friends)
+        _uiState.value = AddExpenseUiState(friends = _uiState.value.friends, groups = _uiState.value.groups)
     }
 }

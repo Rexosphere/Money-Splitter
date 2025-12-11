@@ -3,6 +3,7 @@ package com.rexosphere.money_splitter.data.repository
 import com.rexosphere.money_splitter.data.database.DatabaseHelper
 import com.rexosphere.money_splitter.data.database.DatabaseProvider
 import com.rexosphere.money_splitter.domain.model.Expense
+import com.rexosphere.money_splitter.domain.model.ExpenseCategory
 import com.rexosphere.money_splitter.domain.model.Group
 import com.rexosphere.money_splitter.domain.model.Payment
 import com.rexosphere.money_splitter.domain.model.User
@@ -82,6 +83,16 @@ object ExpenseRepository {
             refreshFromDatabase()
         } else {
             _expenses.value = _expenses.value + expense
+        }
+        updatePaymentsFromExpenses()
+    }
+
+    fun deleteExpense(expenseId: String) {
+        if (useDatabase) {
+            databaseHelper?.deleteExpense(expenseId)
+            refreshFromDatabase()
+        } else {
+            _expenses.value = _expenses.value.filter { it.id != expenseId }
         }
         updatePaymentsFromExpenses()
     }

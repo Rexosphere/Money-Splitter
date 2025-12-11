@@ -13,7 +13,8 @@ CREATE TABLE expenses (
     id TEXT NOT NULL PRIMARY KEY,
     description TEXT NOT NULL,
     amount REAL NOT NULL,
-    date TEXT NOT NULL
+    date TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'OTHER'
 );
 
 -- Expense payers junction table (who paid and how much)
@@ -88,8 +89,8 @@ DELETE FROM users WHERE id = ?;
 -- ============= EXPENSE QUERIES =============
 
 insertExpense:
-INSERT OR REPLACE INTO expenses(id, description, amount, date)
-VALUES (?, ?, ?, ?);
+INSERT OR REPLACE INTO expenses(id, description, amount, date, category)
+VALUES (?, ?, ?, ?, ?);
 
 selectAllExpenses:
 SELECT * FROM expenses;

@@ -17,21 +17,27 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rexosphere.money_splitter.ui.components.*
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 
 @Composable
 fun AddExpenseDialog(
     onDismissRequest: () -> Unit,
+    editingExpense: com.rexosphere.money_splitter.domain.model.Expense? = null,
     viewModel: AddExpenseViewModel = viewModel { AddExpenseViewModel() }
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
+    // Pre-populate form when editing
+    LaunchedEffect(editingExpense) {
+        editingExpense?.let { expense ->
+            viewModel.loadExpenseForEditing(expense)
+        }
+    }
+    
     // Auto-dismiss when saved successfully
     LaunchedEffect(uiState.savedSuccessfully) {
         if (uiState.savedSuccessfully) {
-            // Give a moment to see the success state/snackbar if we had one inside
-            // But since we want to close the dialog, let's just close it
-            // We might want to clear the form state here
             viewModel.resetForm()
             onDismissRequest()
         }
@@ -67,7 +73,7 @@ fun AddExpenseDialog(
                     )
                     IconButton(onClick = onDismissRequest) {
                         Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Close,
+                            imageVector = Icons.Default.Close,
                             contentDescription = "Close"
                         )
                     }
@@ -141,6 +147,17 @@ fun AddExpenseContent(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true
+                    )
+                }
+            }
+            
+            // Category Selection
+            item {
+                PremiumCard {
+                    CategorySelector(
+                        selectedCategory = uiState.category,
+                        onCategorySelected = { viewModel.setCategory(it) },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }

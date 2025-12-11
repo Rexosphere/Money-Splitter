@@ -89,7 +89,8 @@ class DatabaseHelper(driverFactory: DatabaseDriverFactory) {
             id = expense.id,
             description = expense.description,
             amount = expense.amount,
-            date = expense.date.toString()
+            date = expense.date.toString(),
+            category = expense.category.name
         )
 
         // Delete existing payers and re-add
@@ -113,11 +114,19 @@ class DatabaseHelper(driverFactory: DatabaseDriverFactory) {
             
             if (paidBy.isEmpty()) return@mapNotNull null
             
+            // Parse category, standardizing behavior
+            val category = try {
+                com.rexosphere.money_splitter.domain.model.ExpenseCategory.valueOf(row.category)
+            } catch (e: Exception) {
+                com.rexosphere.money_splitter.domain.model.ExpenseCategory.OTHER
+            }
+
             Expense(
                 id = row.id,
                 description = row.description,
                 amount = row.amount,
                 date = LocalDate.parse(row.date),
+                category = category,
                 paidBy = paidBy,
                 participants = participants
             )
