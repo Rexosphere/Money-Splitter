@@ -27,7 +27,7 @@ data class FriendsUiState(
     val editFriendIsAppUser: Boolean = false
 )
 
-class FriendsViewModel(private val repository: ExpenseRepository = ExpenseRepository()) : ViewModel() {
+class FriendsViewModel(private val repository: ExpenseRepository = ExpenseRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(FriendsUiState())
     val uiState: StateFlow<FriendsUiState> = _uiState.asStateFlow()
 

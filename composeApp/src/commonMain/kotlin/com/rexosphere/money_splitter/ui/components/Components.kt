@@ -153,7 +153,6 @@ fun UserAvatar(
 @Composable
 fun AnimatedBadge(
     text: String,
-    icon: String,
     isAppUser: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -171,7 +170,7 @@ fun AnimatedBadge(
     
     AssistChip(
         onClick = {},
-        label = { Text("$icon $text") },
+        label = { Text(text) },
         modifier = modifier,
         colors = AssistChipDefaults.assistChipColors(
             containerColor = containerColor,

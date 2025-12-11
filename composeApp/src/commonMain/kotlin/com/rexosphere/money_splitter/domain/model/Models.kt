@@ -16,7 +16,7 @@ data class Expense(
     val description: String,
     val amount: Double,
     val date: LocalDate,
-    val paidBy: User,
+    val paidBy: Map<User, Double>, // Multiple payers with their paid amounts
     val participants: Map<User, Double> // User and their share of the expense
 )
 

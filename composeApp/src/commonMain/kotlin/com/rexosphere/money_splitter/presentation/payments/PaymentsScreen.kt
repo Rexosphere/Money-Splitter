@@ -186,10 +186,6 @@ fun PaymentsScreen(
                                 .padding(48.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(
-                                text = "💸",
-                                style = MaterialTheme.typography.displayMedium
-                            )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = "No Payments Yet",

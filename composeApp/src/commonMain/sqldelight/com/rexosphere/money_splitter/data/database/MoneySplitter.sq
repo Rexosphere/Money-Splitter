@@ -13,9 +13,17 @@ CREATE TABLE expenses (
     id TEXT NOT NULL PRIMARY KEY,
     description TEXT NOT NULL,
     amount REAL NOT NULL,
-    date TEXT NOT NULL,
-    paid_by_id TEXT NOT NULL,
-    FOREIGN KEY (paid_by_id) REFERENCES users(id)
+    date TEXT NOT NULL
+);
+
+-- Expense payers junction table (who paid and how much)
+CREATE TABLE expense_payers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    expense_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    paid_amount REAL NOT NULL,
+    FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- Expense participants junction table
@@ -80,8 +88,8 @@ DELETE FROM users WHERE id = ?;
 -- ============= EXPENSE QUERIES =============
 
 insertExpense:
-INSERT OR REPLACE INTO expenses(id, description, amount, date, paid_by_id)
-VALUES (?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO expenses(id, description, amount, date)
+VALUES (?, ?, ?, ?);
 
 selectAllExpenses:
 SELECT * FROM expenses;
@@ -91,6 +99,17 @@ SELECT * FROM expenses WHERE id = ?;
 
 deleteExpense:
 DELETE FROM expenses WHERE id = ?;
+
+-- ============= EXPENSE PAYERS QUERIES =============
+
+insertExpensePayer:
+INSERT INTO expense_payers(expense_id, user_id, paid_amount) VALUES (?, ?, ?);
+
+selectPayersByExpenseId:
+SELECT user_id, paid_amount FROM expense_payers WHERE expense_id = ?;
+
+deletePayersByExpenseId:
+DELETE FROM expense_payers WHERE expense_id = ?;
 
 -- ============= EXPENSE PARTICIPANTS QUERIES =============
 

@@ -7,7 +7,7 @@ actual class DatabaseDriverFactory {
     actual fun createDriver(): SqlDriver {
         return NativeSqliteDriver(
             schema = MoneySplitterDatabase.Schema,
-            name = "money_splitter.db"
+            name = "money_splitter_v2.db"
         )
     }
 }

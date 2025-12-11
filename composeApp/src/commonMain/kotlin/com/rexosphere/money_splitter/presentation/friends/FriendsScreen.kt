@@ -123,7 +123,6 @@ fun FriendsScreen(
                                 Spacer(modifier = Modifier.height(8.dp))
                                 AnimatedBadge(
                                     text = if (friend.isAppUser) "User" else "Contact",
-                                    icon = if (friend.isAppUser) "👤" else "📝",
                                     isAppUser = friend.isAppUser
                                 )
                             }

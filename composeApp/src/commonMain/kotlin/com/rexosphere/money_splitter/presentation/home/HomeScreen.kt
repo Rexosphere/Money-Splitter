@@ -180,10 +180,6 @@ fun HomeScreen(
                             .padding(32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "🎉",
-                            style = MaterialTheme.typography.displayMedium
-                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "All Settled!",

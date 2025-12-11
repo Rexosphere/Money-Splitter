@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rexosphere.money_splitter.data.repository.ExpenseRepository
 import com.rexosphere.money_splitter.domain.model.Expense
+import com.rexosphere.money_splitter.domain.model.Group
 import com.rexosphere.money_splitter.domain.model.User
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,19 +29,28 @@ data class AddExpenseUiState(
     val amount: String = "",
     val description: String = "",
     val friends: List<User> = emptyList(),
-    val selectedFriends: Set<String> = emptySet(),
-    val friendShares: Map<String, String> = emptyMap(),
-    val includeSelf: Boolean = true,
+    val groups: List<Group> = emptyList(),
+    val selectedGroup: Group? = null,
+    
+    // Who paid section
+    val selectedPayers: Set<String> = emptySet(),
+    val payerAmounts: Map<String, String> = emptyMap(),
+    
+    // Split with section
+    val selectedParticipants: Set<String> = emptySet(),
+    val participantShares: Map<String, String> = emptyMap(),
+    
     val isSaving: Boolean = false,
     val savedSuccessfully: Boolean = false
 )
 
-class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRepository()) : ViewModel() {
+class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(AddExpenseUiState())
     val uiState: StateFlow<AddExpenseUiState> = _uiState.asStateFlow()
 
     init {
         loadFriends()
+        loadGroups()
     }
 
     private fun loadFriends() {
@@ -51,54 +61,103 @@ class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRep
         }
     }
 
+    private fun loadGroups() {
+        viewModelScope.launch {
+            repository.groups.collect { groups ->
+                _uiState.value = _uiState.value.copy(groups = groups)
+            }
+        }
+    }
+
+    fun selectGroup(group: Group?) {
+        if (group == null) {
+            _uiState.value = _uiState.value.copy(selectedGroup = null)
+            return
+        }
+        
+        // Auto-select all group members as participants
+        val memberIds = group.members.map { it.id }.toSet()
+        _uiState.value = _uiState.value.copy(
+            selectedGroup = group,
+            selectedParticipants = memberIds
+        )
+        updateParticipantShares()
+    }
+
     fun updateAmount(amount: String) {
         _uiState.value = _uiState.value.copy(amount = amount)
-        updateShares()
+        updatePayerAmounts()
+        updateParticipantShares()
     }
 
     fun updateDescription(description: String) {
         _uiState.value = _uiState.value.copy(description = description)
     }
 
-    fun toggleFriend(friendId: String) {
-        val selected = _uiState.value.selectedFriends
-        val newSelected = if (selected.contains(friendId)) {
-            selected - friendId
+    // Payer functions
+    fun togglePayer(userId: String) {
+        val selected = _uiState.value.selectedPayers
+        val newSelected = if (selected.contains(userId)) {
+            selected - userId
         } else {
-            selected + friendId
+            selected + userId
         }
-        _uiState.value = _uiState.value.copy(selectedFriends = newSelected)
-        updateShares()
+        _uiState.value = _uiState.value.copy(selectedPayers = newSelected)
+        updatePayerAmounts()
     }
 
-    fun toggleIncludeSelf() {
-        _uiState.value = _uiState.value.copy(includeSelf = !_uiState.value.includeSelf)
-        updateShares()
+    fun updatePayerAmount(userId: String, amount: String) {
+        val amounts = _uiState.value.payerAmounts.toMutableMap()
+        amounts[userId] = amount
+        _uiState.value = _uiState.value.copy(payerAmounts = amounts)
     }
 
-    fun updateFriendShare(friendId: String, share: String) {
-        val shares = _uiState.value.friendShares.toMutableMap()
-        shares[friendId] = share
-        _uiState.value = _uiState.value.copy(friendShares = shares)
+    private fun updatePayerAmounts() {
+        val totalAmount = _uiState.value.amount.toDoubleOrNull() ?: return
+        val payerCount = _uiState.value.selectedPayers.size
+        if (payerCount == 0) return
+
+        val equalAmount = totalAmount / payerCount
+        val amounts = mutableMapOf<String, String>()
+
+        _uiState.value.selectedPayers.forEach { userId ->
+            amounts[userId] = formatAmount(equalAmount)
+        }
+
+        _uiState.value = _uiState.value.copy(payerAmounts = amounts)
     }
 
-    private fun updateShares() {
-        val amount = _uiState.value.amount.toDoubleOrNull() ?: return
-        val selectedCount = _uiState.value.selectedFriends.size + if (_uiState.value.includeSelf) 1 else 0
-        if (selectedCount == 0) return
+    // Participant functions
+    fun toggleParticipant(userId: String) {
+        val selected = _uiState.value.selectedParticipants
+        val newSelected = if (selected.contains(userId)) {
+            selected - userId
+        } else {
+            selected + userId
+        }
+        _uiState.value = _uiState.value.copy(selectedParticipants = newSelected)
+        updateParticipantShares()
+    }
 
-        val equalShare = amount / selectedCount
+    fun updateParticipantShare(userId: String, share: String) {
+        val shares = _uiState.value.participantShares.toMutableMap()
+        shares[userId] = share
+        _uiState.value = _uiState.value.copy(participantShares = shares)
+    }
+
+    private fun updateParticipantShares() {
+        val totalAmount = _uiState.value.amount.toDoubleOrNull() ?: return
+        val participantCount = _uiState.value.selectedParticipants.size
+        if (participantCount == 0) return
+
+        val equalShare = totalAmount / participantCount
         val shares = mutableMapOf<String, String>()
 
-        _uiState.value.selectedFriends.forEach { friendId ->
-            shares[friendId] = formatAmount(equalShare)
-        }
-        
-        if (_uiState.value.includeSelf) {
-            shares[repository.currentUser.id] = formatAmount(equalShare)
+        _uiState.value.selectedParticipants.forEach { userId ->
+            shares[userId] = formatAmount(equalShare)
         }
 
-        _uiState.value = _uiState.value.copy(friendShares = shares)
+        _uiState.value = _uiState.value.copy(participantShares = shares)
     }
 
     @OptIn(ExperimentalUuidApi::class)
@@ -107,21 +166,38 @@ class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRep
         val amount = state.amount.toDoubleOrNull() ?: return
         val description = state.description.ifBlank { "Expense" }
 
+        // Validate that we have payers and participants
+        if (state.selectedPayers.isEmpty() || state.selectedParticipants.isEmpty()) return
+
         _uiState.value = state.copy(isSaving = true)
 
         viewModelScope.launch {
-            val participants = mutableMapOf<User, Double>()
-
-            // Add current user only if included
-            if (state.includeSelf) {
-                val currentUserShare = state.friendShares[repository.currentUser.id]?.toDoubleOrNull() ?: 0.0
-                participants[repository.currentUser] = currentUserShare
+            // Build payers map
+            val payers = mutableMapOf<User, Double>()
+            state.selectedPayers.forEach { userId ->
+                val user = if (userId == repository.currentUser.id) {
+                    repository.currentUser
+                } else {
+                    state.friends.find { it.id == userId }
+                }
+                user?.let {
+                    val paidAmount = state.payerAmounts[userId]?.toDoubleOrNull() ?: 0.0
+                    payers[it] = paidAmount
+                }
             }
 
-            // Add selected friends
-            state.friends.filter { state.selectedFriends.contains(it.id) }.forEach { friend ->
-                val share = state.friendShares[friend.id]?.toDoubleOrNull() ?: 0.0
-                participants[friend] = share
+            // Build participants map
+            val participants = mutableMapOf<User, Double>()
+            state.selectedParticipants.forEach { userId ->
+                val user = if (userId == repository.currentUser.id) {
+                    repository.currentUser
+                } else {
+                    state.friends.find { it.id == userId }
+                }
+                user?.let {
+                    val share = state.participantShares[userId]?.toDoubleOrNull() ?: 0.0
+                    participants[it] = share
+                }
             }
 
             val expense = Expense(
@@ -129,7 +205,7 @@ class AddExpenseViewModel(private val repository: ExpenseRepository = ExpenseRep
                 description = description,
                 amount = amount,
                 date = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-                paidBy = repository.currentUser,
+                paidBy = payers,
                 participants = participants
             )
 

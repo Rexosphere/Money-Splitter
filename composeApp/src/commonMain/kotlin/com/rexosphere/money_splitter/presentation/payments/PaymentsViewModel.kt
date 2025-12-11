@@ -14,7 +14,7 @@ data class PaymentsUiState(
     val settledPayments: List<Payment> = emptyList()
 )
 
-class PaymentsViewModel(private val repository: ExpenseRepository = ExpenseRepository()) : ViewModel() {
+class PaymentsViewModel(private val repository: ExpenseRepository = ExpenseRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(PaymentsUiState())
     val uiState: StateFlow<PaymentsUiState> = _uiState.asStateFlow()
 

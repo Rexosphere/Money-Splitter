@@ -15,7 +15,9 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabaseProvider.databaseHelper) {
+object ExpenseRepository {
+    private val databaseHelper: DatabaseHelper? get() = DatabaseProvider.databaseHelper
+    
     private val _expenses = MutableStateFlow<List<Expense>>(emptyList())
     val expenses: Flow<List<Expense>> = _expenses.asStateFlow()
 
@@ -36,12 +38,12 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
     )
 
     // Flag to track if we're using database
-    private val useDatabase: Boolean = databaseHelper != null
+    private val useDatabase: Boolean get() = databaseHelper != null
 
     init {
         if (useDatabase) {
             // Initialize with database data
-            databaseHelper?.initializeWithDummyData(currentUser)
+            databaseHelper?.initialize(currentUser)
             loadFromDatabase()
         } else {
             // Fallback to in-memory dummy data
@@ -66,43 +68,11 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
 
     @OptIn(ExperimentalUuidApi::class)
     private fun addDummyData() {
-        val alice = User(id = "alice", name = "Alice", isAppUser = false)
-        val bob = User(id = "bob", name = "Bob", isAppUser = false)
-        val charlie = User(id = "charlie", name = "Charlie", isAppUser = false)
-
-        _friends.value = listOf(alice, bob, charlie)
-
-        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-
-        _expenses.value = listOf(
-            Expense(
-                id = Uuid.random().toString(),
-                description = "Dinner",
-                amount = 150.0,
-                date = now,
-                paidBy = currentUser,
-                participants = mapOf(
-                    currentUser to 50.0,
-                    alice to 50.0,
-                    bob to 50.0
-                )
-            ),
-            Expense(
-                id = Uuid.random().toString(),
-                description = "Movie tickets",
-                amount = 60.0,
-                date = now,
-                paidBy = alice,
-                participants = mapOf(
-                    currentUser to 20.0,
-                    alice to 20.0,
-                    charlie to 20.0
-                )
-            )
-        )
-
-        // Convert expenses to payments
-        updatePaymentsFromExpenses()
+        // Start with empty data - users can add their own friends and expenses
+        _friends.value = emptyList()
+        _expenses.value = emptyList()
+        _payments.value = emptyList()
+        _groups.value = emptyList()
     }
 
     @OptIn(ExperimentalUuidApi::class)
@@ -277,18 +247,33 @@ class ExpenseRepository(private val databaseHelper: DatabaseHelper? = DatabasePr
 
         // Convert each expense into individual payments
         _expenses.value.forEach { expense ->
+            // For each participant, calculate what they owe
             expense.participants.forEach { (participant, share) ->
-                if (participant.id != expense.paidBy.id && share > 0) {
-                    newPayments.add(
-                        Payment(
-                            id = Uuid.random().toString(),
-                            from = participant,
-                            to = expense.paidBy,
-                            amount = share,
-                            date = now,
-                            isSettled = false
-                        )
-                    )
+                // Calculate how much this participant paid
+                val participantPaid = expense.paidBy[participant] ?: 0.0
+                val participantOwes = share - participantPaid
+                
+                if (participantOwes > 0.01) { // They owe money
+                    // They need to pay each payer proportionally
+                    expense.paidBy.forEach { (payer, paidAmount) ->
+                        if (payer.id != participant.id) {
+                            val payerShare = paidAmount / expense.amount
+                            val amountToPay = participantOwes * payerShare
+                            
+                            if (amountToPay > 0.01) {
+                                newPayments.add(
+                                    Payment(
+                                        id = Uuid.random().toString(),
+                                        from = participant,
+                                        to = payer,
+                                        amount = amountToPay,
+                                        date = now,
+                                        isSettled = false
+                                    )
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

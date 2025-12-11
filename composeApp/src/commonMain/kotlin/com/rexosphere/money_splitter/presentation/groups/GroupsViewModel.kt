@@ -27,7 +27,7 @@ data class GroupsUiState(
     val editIncludeSelf: Boolean = true
 )
 
-class GroupsViewModel(private val repository: ExpenseRepository = ExpenseRepository()) : ViewModel() {
+class GroupsViewModel(private val repository: ExpenseRepository = ExpenseRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(GroupsUiState())
     val uiState: StateFlow<GroupsUiState> = _uiState.asStateFlow()
 
