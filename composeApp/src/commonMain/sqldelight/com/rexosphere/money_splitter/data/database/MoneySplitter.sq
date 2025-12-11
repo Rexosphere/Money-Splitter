@@ -1,0 +1,169 @@
+-- Users table
+CREATE TABLE users (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    is_app_user INTEGER NOT NULL DEFAULT 0,
+    phone_number TEXT,
+    email TEXT,
+    added_by TEXT
+);
+
+-- Expenses table
+CREATE TABLE expenses (
+    id TEXT NOT NULL PRIMARY KEY,
+    description TEXT NOT NULL,
+    amount REAL NOT NULL,
+    date TEXT NOT NULL,
+    paid_by_id TEXT NOT NULL,
+    FOREIGN KEY (paid_by_id) REFERENCES users(id)
+);
+
+-- Expense participants junction table
+CREATE TABLE expense_participants (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    expense_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    share REAL NOT NULL,
+    FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Groups table
+CREATE TABLE groups (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+-- Group members junction table
+CREATE TABLE group_members (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    group_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Payments table
+CREATE TABLE payments (
+    id TEXT NOT NULL PRIMARY KEY,
+    from_user_id TEXT NOT NULL,
+    to_user_id TEXT NOT NULL,
+    amount REAL NOT NULL,
+    date TEXT NOT NULL,
+    is_settled INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (from_user_id) REFERENCES users(id),
+    FOREIGN KEY (to_user_id) REFERENCES users(id)
+);
+
+-- Friends table (users who are friends with current user)
+CREATE TABLE friends (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL UNIQUE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- ============= USER QUERIES =============
+
+insertUser:
+INSERT OR REPLACE INTO users(id, name, is_app_user, phone_number, email, added_by)
+VALUES (?, ?, ?, ?, ?, ?);
+
+selectAllUsers:
+SELECT * FROM users;
+
+selectUserById:
+SELECT * FROM users WHERE id = ?;
+
+deleteUser:
+DELETE FROM users WHERE id = ?;
+
+-- ============= EXPENSE QUERIES =============
+
+insertExpense:
+INSERT OR REPLACE INTO expenses(id, description, amount, date, paid_by_id)
+VALUES (?, ?, ?, ?, ?);
+
+selectAllExpenses:
+SELECT * FROM expenses;
+
+selectExpenseById:
+SELECT * FROM expenses WHERE id = ?;
+
+deleteExpense:
+DELETE FROM expenses WHERE id = ?;
+
+-- ============= EXPENSE PARTICIPANTS QUERIES =============
+
+insertExpenseParticipant:
+INSERT INTO expense_participants(expense_id, user_id, share) VALUES (?, ?, ?);
+
+selectParticipantsByExpenseId:
+SELECT user_id, share FROM expense_participants WHERE expense_id = ?;
+
+deleteParticipantsByExpenseId:
+DELETE FROM expense_participants WHERE expense_id = ?;
+
+-- ============= GROUP QUERIES =============
+
+insertGroup:
+INSERT OR REPLACE INTO groups(id, name) VALUES (?, ?);
+
+selectAllGroups:
+SELECT * FROM groups;
+
+selectGroupById:
+SELECT * FROM groups WHERE id = ?;
+
+deleteGroup:
+DELETE FROM groups WHERE id = ?;
+
+-- ============= GROUP MEMBERS QUERIES =============
+
+insertGroupMember:
+INSERT INTO group_members(group_id, user_id) VALUES (?, ?);
+
+selectMembersByGroupId:
+SELECT user_id FROM group_members WHERE group_id = ?;
+
+deleteMembersByGroupId:
+DELETE FROM group_members WHERE group_id = ?;
+
+-- ============= PAYMENT QUERIES =============
+
+insertPayment:
+INSERT OR REPLACE INTO payments(id, from_user_id, to_user_id, amount, date, is_settled)
+VALUES (?, ?, ?, ?, ?, ?);
+
+selectAllPayments:
+SELECT * FROM payments;
+
+selectPendingPayments:
+SELECT * FROM payments WHERE is_settled = 0;
+
+selectSettledPayments:
+SELECT * FROM payments WHERE is_settled = 1;
+
+updatePaymentSettled:
+UPDATE payments SET is_settled = ? WHERE id = ?;
+
+deletePayment:
+DELETE FROM payments WHERE id = ?;
+
+deleteAllPayments:
+DELETE FROM payments;
+
+-- ============= FRIENDS QUERIES =============
+
+insertFriend:
+INSERT OR IGNORE INTO friends(user_id) VALUES (?);
+
+selectAllFriends:
+SELECT u.* FROM users u INNER JOIN friends f ON u.id = f.user_id;
+
+deleteFriend:
+DELETE FROM friends WHERE user_id = ?;
+
+-- ============= UTILITY QUERIES =============
+
+deleteAllData:
+DELETE FROM expense_participants;
